@@ -1,0 +1,20 @@
+{
+  "name": "unidad-hermeneutica",
+  "version": "1.0.0",
+  "description": "Aplicación web para análisis cualitativo de entrevistas a conductores de Uber en Mendoza, diseñada para la tesina de sociología (UNCuyo). Permite codificación abierta, axial y selectiva de fragmentos de chat, con visualización de datos y exportación a múltiples formatos.",
+  "main": "script.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "multer": "^2.1.1",
+    "openai": "^6.38.0"
+  }
+}

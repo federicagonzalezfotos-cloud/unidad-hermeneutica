@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UH — Uber Mendoza</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; height: 100vh; overflow: hidden; }
+        header { background: #1a1a2e; color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; height: 60px; flex-shrink: 0; }
+        header h1 { font-size: 1.2rem; font-weight: 600; }
+        .header-info { display: flex; gap: 10px; align-items: center; }
+        .badge { background: #444; padding: 4px 10px; border-radius: 15px; font-size: 0.75rem; }
+        .btn { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
+        .btn-primary { background: #e94560; color: white; }
+        .btn-secondary { background: #16213e; color: white; border: 1px solid #444; }
+        .btn-danger { background: #dc3545; color: white; }
+        .container { display: flex; flex: 1; overflow: hidden; }
+        .panel-left { width: 200px; background: #fff; border-right: 1px solid #ddd; display: flex; flex-direction: column; overflow: hidden; }
+        .panel-header { padding: 8px; border-bottom: 1px solid #eee; font-weight: 600; font-size: 0.85rem; }
+        .code-tree { flex: 1; overflow-y: auto; padding: 8px; }
+        .code-family { margin-bottom: 8px; }
+        .family-title { font-size: 0.65rem; color: #666; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; padding-left: 4px; border-left: 2px solid; }
+        .family-alg .family-title { border-color: #2196F3; }
+        .family-sub .family-title { border-color: #4CAF50; }
+        .family-col .family-title { border-color: #FF9800; }
+        .family-general .family-title { border-color: #9E9E9E; }
+        .code-item { display: flex; justify-content: space-between; align-items: center; padding: 5px 6px; margin-bottom: 2px; border-radius: 3px; cursor: pointer; font-size: 0.75rem; }
+        .code-item:hover { background: #f0f0f0; }
+        .code-item.active { background: #e3f2fd; border-left: 2px solid #2196F3; }
+        .code-count { background: #eee; padding: 2px 5px; border-radius: 3px; font-size: 0.65rem; }
+        .panel-center { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .form-section { background: #fff; padding: 10px; border-bottom: 1px solid #ddd; overflow-y: auto; }
+        .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group label { font-size: 0.65rem; color: #555; margin-bottom: 2px; font-weight: 500; }
+        .form-group input, .form-group select, .form-group textarea { padding: 5px; border: 1px solid #ddd; border-radius: 3px; font-size: 0.75rem; font-family: inherit; }
+        .form-group textarea { resize: vertical; }
+        .autocomplete-container { position: relative; }
+        .autocomplete-suggestions { position: absolute; background: white; border: 1px solid #ddd; border-radius: 3px; max-height: 120px; overflow-y: auto; z-index: 100; width: 100%; box-shadow: 0 2px 6px rgba(0,0,0,0.15); display: none; }
+        .autocomplete-suggestion { padding: 5px; cursor: pointer; font-size: 0.75rem; display: flex; justify-content: space-between; }
+        .autocomplete-suggestion:hover { background: #f0f0f0; }
+        .interchange-turns { background: #fafafa; padding: 6px; border-radius: 3px; margin-bottom: 6px; }
+        .turn-row { display: flex; gap: 5px; margin-bottom: 4px; align-items: center; }
+        .turn-row input[type="text"] { width: 45px; }
+        .turn-row select { width: 45px; }
+        .turn-row textarea { flex: 1; min-height: 28px; }
+        .btn-remove-turn { background: #dc3545; color: white; border: none; border-radius: 2px; width: 20px; height: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; }
+        .btn-add-turn { width: 100%; margin-top: 5px; background: #6c757d; color: white; }
+        .form-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; padding-top: 8px; border-top: 1px solid #eee; }
+        .offline-notice { font-size: 0.6rem; color: #888; }
+        .citations-list { flex: 1; overflow-y: auto; padding: 8px; background: #fafafa; }
+        .citation-item { background: white; padding: 8px; border-radius: 3px; margin-bottom: 6px; border-left: 2px solid #ddd; }
+        .citation-item.intercambio { border-left-color: #FF9800; }
+        .citation-item.cita { border-left-color: #2196F3; }
+        .citation-meta { display: flex; gap: 5px; margin-bottom: 5px; flex-wrap: wrap; }
+        .meta-item { font-size: 0.65rem; color: #666; }
+        .badge-category { background: #e3f2fd; color: #1976D2; padding: 2px 5px; border-radius: 2px; font-size: 0.65rem; }
+        .badge-tone { background: #fff3e0; color: #f57c00; padding: 2px 5px; border-radius: 2px; font-size: 0.65rem; }
+        .citation-fragment { font-size: 0.75rem; color: #333; line-height: 1.2; margin-bottom: 5px; padding-left: 6px; border-left: 2px solid #eee; }
+        .citation-invivo { font-style: italic; color: #666; font-size: 0.7rem; }
+        .citation-actions { display: flex; justify-content: flex-end; }
+        .citation-actions button { padding: 2px 5px; font-size: 0.65rem; }
+        .panel-right { width: 280px; background: #fff; border-left: 1px solid #ddd; display: flex; flex-direction: column; overflow: hidden; }
+        .tabs { display: flex; border-bottom: 1px solid #ddd; }
+        .tab { flex: 1; padding: 8px; text-align: center; cursor: pointer; font-size: 0.75rem; border-bottom: 2px solid transparent; }
+        .tab.active { border-bottom-color: #1a1a2e; background: #f5f5f5; font-weight: 500; }
+        .panel-content { flex: 1; overflow-y: auto; padding: 8px; }
+        .metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px; }
+        .metric-card { background: #f8f9fa; padding: 8px; border-radius: 5px; text-align: center; }
+        .metric-value { font-size: 1.2rem; font-weight: 700; color: #1a1a2e; }
+        .metric-label { font-size: 0.6rem; color: #666; text-transform: uppercase; }
+        .chart-container { background: white; padding: 6px; border-radius: 5px; margin-bottom: 10px; }
+        .suggestion-card { background: #fff3cd; padding: 8px; border-radius: 5px; margin-bottom: 6px; border-left: 3px solid #ffc107; }
+        .suggestion-card.warning { background: #f8d7da; border-left-color: #dc3545; }
+        .suggestion-card h4 { font-size: 0.75rem; margin-bottom: 5px; color: #856404; }
+        .suggestion-card.warning h4 { color: #721c24; }
+        .memo-list { display: flex; flex-direction: column; gap: 6px; }
+        .memo-item { background: #f8f9fa; padding: 6px; border-radius: 3px; font-size: 0.7rem; }
+        .memo-header { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 0.6rem; color: #666; }
+        .memo-text { color: #333; font-style: italic; }
+        .heatmap-container { overflow-x: auto; }
+        .heatmap-table { width: 100%; border-collapse: collapse; font-size: 0.6rem; }
+        .heatmap-table th, .heatmap-table td { padding: 2px 4px; text-align: center; border: 1px solid #eee; }
+        .heatmap-table th { background: #f8f9fa; }
+        .heatmap-cell { width: 20px; height: 20px; border-radius: 2px; }
+        .heatmap-cell.low { background: #e0f7fa; }
+        .heatmap-cell.medium { background: #4dd0e1; }
+        .heatmap-cell.high { background: #0097a7; }
+        .donut-chart { display: flex; justify-content: center; margin: 8px 0; }
+        .donut-chart canvas { max-width: 120px; max-height: 120px; }
+        .filter-info { font-size: 0.65rem; color: #888; margin-bottom: 6px; }
+        .clear-filter { font-size: 0.6rem; color: #1976D2; cursor: pointer; text-decoration: underline; }
+        .media-preview { margin-top: 5px; display: flex; gap: 5px; flex-wrap: wrap; }
+        .media-preview img { width: 35px; height: 35px; object-fit: cover; border-radius: 2px; cursor: pointer; }
+        .media-preview .audio-icon { width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; background: #f0f0f0; border-radius: 2px; font-size: 0.55rem; color: #666; }
+        .file-count { font-size: 0.6rem; color: #666; margin-top: 3px; }
+        footer { background: #1a1a2e; color: #888; text-align: center; padding: 5px; font-size: 0.6rem; }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 2px; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>UH — Uber Mendoza</h1>
+        <div class="header-info">
+            <span id="currentDate">--</span>
+            <span class="badge">Modo offline</span>
+            <button class="btn btn-secondary" onclick="exportJSON()">Exportar JSON</button>
+            <button class="btn btn-secondary" onclick="document.getElementById('importFile').click()">Importar JSON</button>
+            <button class="btn btn-primary" onclick="exportCSV()">Exportar CSV</button>
+            <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importJSON(this)">
+        </div>
+    </header>
+    <div class="container">
+        <div class="panel-left">
+            <div class="panel-header">Sistema de Códigos
+                <button class="btn" style="width: 100%; margin-top: 5px; padding: 4px; font-size: 0.65rem; background: #e3f2fd; color: #1976D2;" onclick="clearFilter()">Ver todos</button>
+            </div>
+            <div class="code-tree" id="codeTree"></div>
+        </div>
+        <div class="panel-center">
+            <div class="form-section">
+                <div class="form-grid">
+                    <div class="form-group"><label>Fecha</label><input type="date" id="citationDate"></div>
+                    <div class="form-group"><label>Sesión</label><select id="citationSession"><option value="mañana">Mañana</option><option value="noche">Noche</option></select></div>
+                    <div class="form-group"><label>Participante</label><input type="text" id="participantId" placeholder="P01"></div>
+                    <div class="form-group"><label>Tipo</label><select id="participantType"><option value="veterano">Veterano</option><option value="nuevo">Nuevo</option><option value="lider">Líder</option><option value="sin_clasificar">Sin clasificar</option></select></div>
+                    <div class="form-group"><label>Género</label><select id="participantGender"><option value="masculino">Masculino</option><option value="femenino">Femenino</option><option value="no_binario">No binario</option><option value="no_identificado">No identificado</option></select></div>
+                    <div class="form-group"><label>Tipo</label><select id="registrationType" onchange="toggleType()"><option value="cita">Cita individual</option><option value="intercambio">Intercambio</option></select></div>
+                </div>
+                <div id="individualSection" style="margin-top: 8px;">
+                    <div class="form-group"><label>Fragmento del chat</label><textarea id="fragment" placeholder="Pegá aquí el mensaje..."></textarea></div>
+                </div>
+                <div id="interchangeSection" style="display: none;">
+                    <h4 style="font-size: 0.75rem; margin: 6px 0 4px 0; color: #333;">Turnos del intercambio</h4>
+                    <div class="interchange-turns" id="turnsContainer"></div>
+                    <button class="btn btn-add-turn" onclick="addTurn()">+ Agregar turno</button>
+                    <div class="form-group" style="margin-top: 6px;"><label>Descripción</label><textarea id="interchangeDescription" placeholder="Dinámica de la secuencia..."></textarea></div>
+                </div>
+                <div class="form-grid" style="margin-top: 8px;">
+                    <div class="form-group">
+                        <label>Categoría / Código</label>
+                        <div class="autocomplete-container">
+                            <input type="text" id="category" placeholder="Ej: ALG:..." autocomplete="off">
+                            <div class="autocomplete-suggestions" id="categorySuggestions"></div>
+                        </div>
+                    </div>
+                    <div class="form-group"><label>Código In Vivo</label><input type="text" id="invivoCode" placeholder="Término nativo..."></div>
+                    <div class="form-group"><label>Tono</label><select id="tone"><option value="neutro">Neutro</option><option value="solidario">Solidario</option><option value="frustrado">Frustrado</option><option value="ironico">Irónico</option><option value="tenso">Tenso</option><option value="festivo">Festivo</option><option value="informativo">Informativo</option></select></div>
+                </div>
+                <div class="form-group" style="margin-top: 8px;"><label>Memo rápido</label><textarea id="memo" placeholder="¿Qué patrón observás?..."></textarea></div>
+                <div class="form-group" style="margin-top: 8px;">
+                    <label>Adjuntar evidencia (img/audio)</label>
+                    <input type="file" id="mediaFile" accept="image/*,audio/*" onchange="handleMedia(this)">
+                    <div class="media-preview" id="mediaPreview"></div>
+                    <div class="file-count" id="fileCount">0 archivos</div>
+                </div>
+                <div class="form-actions">
+                    <span class="offline-notice">Guardando en localStorage</span>
+                    <button class="btn btn-primary" onclick="saveCitation()">Guardar cita</button>
+                </div>
+            </div>
+            <div class="citations-list">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <h3 style="font-size: 0.8rem;">Citas Recientes</h3>
+                    <span id="filterInfo" class="filter-info" style="display: none;"></span>
+                </div>
+                <div id="citationsList"></div>
+            </div>
+        </div>
+        <div class="panel-right">
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('dashboard')">Dashboard</div>
+                <div class="tab" onclick="switchTab('memos')">Memos</div>
+            </div>
+            <div id="dashboard" class="panel-content">
+                <div class="metrics-grid">
+                    <div class="metric-card"><div class="metric-value" id="totalCitations">0</div><div class="metric-label">Citas</div></div>
+                    <div class="metric-card"><div class="metric-value" id="activeCategories">0</div><div class="metric-label">Categorías</div></div>
+                    <div class="metric-card"><div class="metric-value" id="daysObserved">0</div><div class="metric-label">Días</div></div>
+                    <div class="metric-card"><div class="metric-value" id="totalMedia">0</div><div class="metric-label">Archivos</div></div>
+                </div>
+                <div class="chart-container"><h4 style="font-size: 0.75rem; margin-bottom: 6px; color: #333;">Frecuencia por Categoría</h4><canvas id="categoryChart"></canvas></div>
+                <div class="chart-container"><h4 style="font-size: 0.75rem; margin-bottom: 6px; color: #333;">Género</h4><div class="donut-chart"><canvas id="genderChart"></canvas></div><p style="font-size: 0.55rem; color: #666; text-align: center;">Género estimado por patrones discursivos</p></div>
+                <div class="chart-container"><h4 style="font-size: 0.75rem; margin-bottom: 6px; color: #333;">Citas vs Intercambios</h4><div style="display: flex; gap: 12px; justify-content: center; margin-top: 6px;"><div style="text-align: center;"><div class="metric-value" style="font-size: 0.9rem;" id="citasCount">0</div><div style="font-size: 0.55rem; color: #666;">Citas</div></div><div style="text-align: center;"><div class="metric-value" style="font-size: 0.9rem;" id="intercambiosCount">0</div><div style="font-size: 0.55rem; color: #666;">Intercambios</div></div></div></div>
+                <div id="saturationWarnings"></div>
+                <div class="chart-container"><h4 style="font-size: 0.75rem; margin-bottom: 6px; color: #333;">Heatmap Sesión × Categoría</h4><div class="heatmap-container"><table class="heatmap-table" id="heatmapTable"><thead><tr><th></th><th id="heatmapHeaders"></th></tr></thead><tbody id="heatmapBody"></tbody></table></div></div>
+            </div>
+            <div id="memos" class="panel-content" style="display: none;">
+                <div class="form-group" style="margin-bottom: 6px;"><label>Filtrar por categoría</label><select id="memoFilter" onchange="filterMemos()"><option value="">Todas</option></select></div>
+                <input type="text" id="memoSearch" placeholder="Buscar en memos..." oninput="filterMemos()" style="width: 100%; padding: 5px; border: 1px solid #ddd; border-radius: 3px; font-size: 0.75rem; margin-bottom: 8px;">
+                <div class="memo-list" id="memoList"></div>
+            </div>
+        </div>
+    </div>
+    <footer>Unidad Hermenéutica Web | Tesina Sociología UNCuyo | GT Conductores Uber Mendoza</footer>
+    <script>
+        const STORAGE_KEY = 'uh_uber_mendoza_citas';
+        const FAMILIES = { 'ALG:': {name:'Algoritmo', color:'#2196F3'}, 'SUB:': {name:'Subjetividad', color:'#4CAF50'}, 'COL:': {name:'Colectivo', color:'#FF9800'} };
+        const DEFAULT_FAMILY = {name:'General', color:'#9E9E9E'};
+        let citations = [];
+        let currentFilter = null;
+        let currentTurns = [];
+        let currentMedia = [];
+        let chartInstances = {};
+
+        function init() {
+            loadCitations();
+            updateDate();
+            renderCodeTree();
+            renderCitationsList();
+            renderDashboard();
+            renderMemos();
+            addTurn();
+            initCharts();
+            document.getElementById('category').addEventListener('input', showCategorySuggestions);
+            document.getElementById('citationDate').value = new Date().toISOString().split('T')[0];
+        }
+
+        function loadCitations() {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) {
+                try { citations = JSON.parse(stored); }
+                catch (e) { citations = []; }
+            }
+        }
+
+        function saveCitations() { localStorage.setItem(STORAGE_KEY, JSON.stringify(citations)); updateAll(); }
+
+        function getNextPid() {
+            const ids = citations.map(c => c.participante).filter(p => p && p.match(/^P\d+$/));
+            if (ids.length === 0) return 'P01';
+            const nums = ids.map(id => parseInt(id.replace('P', '')));
+            return 'P' + String(Math.max(...nums) + 1).padStart(2, '0');
+        }
+
+        function getFamily(code) {
+            for (const [prefix, family] of Object.entries(FAMILIES)) { if (code.startsWith(prefix)) return family; }
+            return DEFAULT_FAMILY;
+        }
+
+        function getCategories() {
+            const cats = new Set();
+            citations.forEach(c => { if (c.categoria) cats.add(c.categoria); });
+            return Array.from(cats).sort();
+        }
+
+        function getCategoryCount(cat) { return citations.filter(c => c.categoria === cat).length; }
+
+        function isSaturated(cat) {
+            const catCits = citations.filter(c => c.categoria === cat);
+            if (catCits.length < 5) return false;
+            const dates = [...new Set(catCits.map(c => c.fecha))].sort().slice(-3);
+            return dates.length < 3;
+        }
+
+        function renderCodeTree() {
+            const tree = document.getElementById('codeTree');
+            const cats = getCategories();
+            const families = { 'ALG:': [], 'SUB:': [], 'COL:': [], 'general': [] };
+            cats.forEach(cat => {
+                if (cat.startsWith('ALG:')) families['ALG:'].push(cat);
+                else if (cat.startsWith('SUB:')) families['SUB:'].push(cat);
+                else if (cat.startsWith('COL:')) families['COL:'].push(cat);
+                else families['general'].push(cat);
+            });
+            let html = '';
+            for (const [prefix, catList] of Object.entries(families)) {
+                if (catList.length === 0) continue;
+                const family = FAMILIES[prefix] || DEFAULT_FAMILY;
+                const cls = prefix === 'ALG:' ? 'family-alg' : prefix === 'SUB:' ? 'family-sub' : prefix === 'COL:' ? 'family-col' : 'family-general';
+                html += `<div class="code-family ${cls}"><div class="family-title">${family.name}</div>`;
+                catList.forEach(cat => {
+                    const active = currentFilter === cat ? 'active' : '';
+                    const saturated = isSaturated(cat) ? 'saturated' : '';
+                    html += `<div class="code-item ${active} ${saturated}" onclick="filterByCode('${cat}')">
+                        <span>${cat}</span><span class="code-count">${getCategoryCount(cat)}</span></div>`;
+                });
+                html += '</div>';
+            }
+            tree.innerHTML = html;
+        }
+
+        function toggleType() {
+            const isInt = document.getElementById('registrationType').value === 'intercambio';
+            document.getElementById('individualSection').style.display = isInt ? 'none' : 'block';
+            document.getElementById('interchangeSection').style.display = isInt ? 'block' : 'none';
+            if (isInt && currentTurns.length === 0) addTurn();
+        }
+
+        function addTurn() {
+            currentTurns.push({ id: Date.now() + currentTurns.length, participante: '', genero: 'masculino', mensaje: '' });
+            renderTurns();
+        }
+
+        function removeTurn(id) { currentTurns = currentTurns.filter(t => t.id !== id); renderTurns(); }
+        function updateTurn(id, field, val) { const t = currentTurns.find(x => x.id === id); if (t) t[field] = val; }
+
+        function renderTurns() {
+            const cont = document.getElementById('turnsContainer');
+            let html = '';
+            currentTurns.forEach((t, i) => {
+                const even = (i + 1) % 2 === 0;
+                html += `<div class="turn-row" style="opacity: ${even ? '0.8' : '1'}">
+                    <input type="text" placeholder="P01" value="${t.participante}" oninput="updateTurn(${t.id}, 'participante', this.value)">
+                    <select onchange="updateTurn(${t.id}, 'genero', this.value)"><option value="masculino" ${t.genero==='masculino'?'selected':''}>M</option><option value="femenino" ${t.genero==='femenino'?'selected':''}>F</option><option value="no_binario" ${t.genero==='no_binario'?'selected':''}>NB</option><option value="no_identificado" ${t.genero==='no_identificado'?'selected':''}>?</option></select>
+                    <textarea placeholder="Mensaje..." oninput="updateTurn(${t.id}, 'mensaje', this.value)">${t.mensaje}</textarea>
+                    <button class="btn-remove-turn" onclick="removeTurn(${t.id})">×</button></div>`;
+            });
+            cont.innerHTML = html;
+        }
+
+        function handleMedia(input) {
+            const file = input.files[0]; if (!file) return;
+            if (currentMedia.length >= 5) { alert('Máximo 5 archivos'); return; }
+            const reader = new FileReader();
+            reader.onload = function(e) { currentMedia.push({ name: file.name, type: file.type.startsWith('image/')?'imagen':'audio', data: e.target.result }); renderMedia(); };
+            reader.readAsDataURL(file);
+            input.value = '';
+        }
+
+        function renderMedia() {
+            const cont = document.getElementById('mediaPreview');
+            const cnt = document.getElementById('fileCount');
+            let html = '';
+            currentMedia.forEach(m => {
+                if (m.type === 'imagen') html += `<img src="${m.data}" onclick="viewMedia(${currentMedia.indexOf(m)})" title="${m.name}">`;
+                else html += `<div class="audio-icon">🎵<br>${m.name}</div>`;
+            });
+            cont.innerHTML = html;
+            cnt.textContent = `${currentMedia.length} archivos`;
+        }
+
+        function viewMedia(idx) { if (currentMedia[idx].type === 'imagen') window.open(currentMedia[idx].data, '_blank'); }
+
+        function showCategorySuggestions() {
+            const inp = document.getElementById('category');
+            const sug = document.getElementById('categorySuggestions');
+            const val = inp.value.trim().toLowerCase();
+            if (val.length < 2) { sug.style.display = 'none'; return; }
+            const cats = getCategories();
+            const matches = cats.filter(c => c.toLowerCase().includes(val));
+            if (matches.length === 0) { sug.style.display = 'none'; return; }
+            sug.innerHTML = matches.map(cat => `<div class="autocomplete-suggestion" onclick="selectCat('${cat}')"><span>${cat}</span><span style="color:#999">(${getCategoryCount(cat)})</span></div>`).join('');
+            sug.style.display = 'block';
+        }
+
+        function selectCat(cat) { document.getElementById('category').value = cat; document.getElementById('categorySuggestions').style.display = 'none'; }
+
+        function clearFilter() { currentFilter = null; renderCodeTree(); renderCitationsList(); document.getElementById('filterInfo').style.display = 'none'; }
+
+        function filterByCode(code) {
+            currentFilter = code;
+            renderCodeTree();
+            renderCitationsList();
+            document.getElementById('filterInfo').innerHTML = `Filtrando: <strong>${code}</strong> | <span class="clear-filter" onclick="clearFilter()">Limpiar</span>`;
+            document.getElementById('filterInfo').style.display = 'block';
+        }
+
+        function saveCitation() {
+            const cat = document.getElementById('category').value.trim();
+            if (!cat) { alert('Seleccioná o ingresá una categoría'); return; }
+            const isInt = document.getElementById('registrationType').value === 'intercambio';
+            const cit = {
+                id: Date.now(), fecha: document.getElementById('citationDate').value,
+                sesion: document.getElementById('citationSession').value,
+                tipo_registro: document.getElementById('registrationType').value,
+                participante: document.getElementById('participantId').value || getNextPid(),
+                tipo_participante: document.getElementById('participantType').value,
+                genero: document.getElementById('participantGender').value,
+                categoria: cat, codigo_invivo: document.getElementById('invivoCode').value.trim(),
+                tono: document.getElementById('tone').value, memo: document.getElementById('memo').value.trim(),
+                media: [...currentMedia]
+            };
+            if (isInt) {
+                cit.fragmento = null;
+                cit.turnos = currentTurns.filter(t => t.mensaje.trim());
+                cit.descripcion_intercambio = document.getElementById('interchangeDescription').value.trim();
+                cit.cantidad_turnos = cit.turnos.length;
+            } else {
+                cit.fragmento = document.getElementById('fragment').value.trim();
+                cit.turnos = null;
+            }
+            if (!cit.fragmento && cit.turnos.length < 2) { alert('La cita debe tener fragmento o el intercambio al menos 2 turnos'); return; }
+            citations.unshift(cit);
+            saveCitations();
+            document.getElementById('citationDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('fragment').value = ''; document.getElementById('invivoCode').value = '';
+            document.getElementById('memo').value = ''; document.getElementById('category').value = '';
+            currentTurns = []; currentMedia = []; renderTurns(); renderMedia();
+            alert('Cita guardada');
+        }
+
+        function deleteCitation(id) {
+            if (!confirm('¿Eliminar esta cita?')) return;
+            citations = citations.filter(c => c.id !== id);
+            saveCitations();
+        }
+
+        function renderCitationsList() {
+            const list = document.getElementById('citationsList');
+            let filtered = currentFilter ? citations.filter(c => c.categoria === currentFilter) : citations;
+            const recent = filtered.slice(0, 20);
+            if (recent.length === 0) { list.innerHTML = '<p style="text-align:center;color:#999;padding:20px;">No hay citas</p>'; return; }
+            let html = '';
+            recent.forEach(c => {
+                const isInt = c.tipo_registro === 'intercambio';
+                const frag = isInt ? `${c.cantidad_turnos || 0} turnos` : (c.fragmento || '').substring(0, 80) + (c.fragmento && c.fragmento.length > 80 ? '...' : '');
+                html += `<div class="citation-item ${isInt?'intercambio':'cita'}">
+                    <div class="citation-meta"><span class="meta-item">${c.fecha} ${c.sesion.charAt(0).toUpperCase() + c.sesion.slice(1)}</span>
+                    <span class="badge-category">${c.categoria}</span><span class="badge-tone">${c.tono}</span>
+                    ${c.codigo_invivo ? `<span class="meta-item">"${c.codigo_invivo}"</span>` : ''}
+                    ${c.media.length > 0 ? '<span class="meta-item">📎</span>' : ''}
+                    ${isInt ? '<span class="meta-item" style="color:#FF9800">🔄</span>' : ''}</div>
+                    <div class="citation-fragment">${escapeHtml(frag)}</div>
+                    ${c.memo ? `<div style="font-size:0.7rem;color:#888;font-style:italic">${escapeHtml(c.memo.substring(0,100))}${c.memo.length>100?'...':''}</div>` : ''}
+                    <div class="citation-actions"><button class="btn btn-danger" onclick="deleteCitation(${c.id})">Eliminar</button></div></div>`;
+            });
+            list.innerHTML = html;
+        }
+
+        function escapeHtml(t) { if (!t) return ''; return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
+
+        function updateAll() { renderCodeTree(); renderCitationsList(); renderDashboard(); renderMemos(); }
+
+        function renderDashboard() {
+            document.getElementById('totalCitations').textContent = citations.length;
+            document.getElementById('activeCategories').textContent = getCategories().length;
+            document.getElementById('daysObserved').textContent = [...new Set(citations.map(c => c.fecha))].length;
+            document.getElementById('totalMedia').textContent = citations.reduce((s,c) => s + c.media.length, 0);
+            const cc = citations.filter(c => c.tipo_registro === 'cita').length;
+            const ic = citations.filter(c => c.tipo_registro === 'intercambio').length;
+            document.getElementById('citasCount').textContent = cc;
+            document.getElementById('intercambiosCount').textContent = ic;
+            renderCategoryChart();
+            renderGenderChart();
+            renderHeatmap();
+            renderSaturationWarnings();
+        }
+
+        function renderCategoryChart() {
+            const cats = getCategories();
+            const counts = cats.map(c => getCategoryCount(c));
+            const colors = cats.map(c => getFamily(c).color);
+            const ctx = document.getElementById('categoryChart').getContext('2d');
+            if (chartInstances.category) chartInstances.category.destroy();
+            chartInstances.category = new Chart(ctx, { type: 'bar', data: { labels: cats, datasets: [{ label: 'Frecuencia', data: counts, backgroundColor: colors, borderColor: colors, borderWidth: 1 }] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, scales: { x: { beginAtZero: true } } } });
+        }
+
+        function renderGenderChart() {
+            const gc = { 'masculino':0, 'femenino':0, 'no_binario':0, 'no_identificado':0 };
+            citations.forEach(c => {
+                if (c.tipo_registro === 'intercambio' && c.turnos && c.turnos.length > 0) {
+                    gc[c.turnos[0].genero || 'no_identificado'] = (gc[c.turnos[0].genero || 'no_identificado'] || 0) + 1;
+                } else { gc[c.genero || 'no_identificado'] = (gc[c.genero || 'no_identificado'] || 0) + 1; }
+            });
+            const ctx = document.getElementById('genderChart').getContext('2d');
+            if (chartInstances.gender) chartInstances.gender.destroy();
+            chartInstances.gender = new Chart(ctx, { type: 'doughnut', data: { labels: ['Masculino','Femenino','No binario','No identificado'], datasets: [{ data: [gc['masculino'],gc['femenino'],gc['no_binario'],gc['no_identificado']], backgroundColor: ['#2196F3','#E91E63','#9C27B0','#9E9E9E'], borderWidth: 1 }] }, options: { responsive: true, maintainAspectRatio: false } });
+        }
+
+        function renderHeatmap() {
+            const cats = getCategories();
+            const ses = ['mañana', 'noche'];
+            const counts = {};
+            ses.forEach(s => { counts[s] = {}; cats.forEach(cat => { counts[s][cat] = citations.filter(c => c.sesion === s && c.categoria === cat).length; }); });
+            let thead = '<th>Sesión / Categoría</th>';
+            cats.forEach(cat => { thead += `<th>${cat.substring(0,8)}${cat.length>8?'...':''}</th>`; });
+            let tbody = '';
+            ses.forEach(s => {
+                tbody += `<tr><td>${s.charAt(0).toUpperCase() + s.slice(1)}</td>`;
+                cats.forEach(cat => {
+                    const cnt = counts[s][cat] || 0;
+                    let cls = 'heatmap-cell';
+                    if (cnt > 0) cls += cnt >= 5 ? ' high' : cnt >= 3 ? ' medium' : ' low';
+                    tbody += `<td class="${cls}">${cnt > 0 ? cnt : ''}</td>`;
+                });
+                tbody += '</tr>';
+            });
+            document.getElementById('heatmapHeaders').innerHTML = thead;
+            document.getElementById('heatmapBody').innerHTML = tbody;
+        }
+
+        function renderSaturationWarnings() {
+            const cont = document.getElementById('saturationWarnings');
+            const saturated = getCategories().filter(c => isSaturated(c));
+            if (saturated.length === 0) { cont.innerHTML = ''; return; }
+            let html = '<div class="suggestion-card warning"><h4>⚠️ Posible saturación teórica:</h4>';
+            saturated.forEach(c => { html += `<p style="margin:4px 0;font-size:0.7rem">${c}</p>`; });
+            html += '<p style="font-size:0.55rem;margin-top:6px;color:#721c24;">Requiere tu juicio interpretativo — este indicador es orientativo.</p></div>';
+            cont.innerHTML = html;
+        }
+
+        function renderMemos() {
+            const list = document.getElementById('memoList');
+            const sel = document.getElementById('memoFilter');
+            const cats = getCategories();
+            let opts = '<option value="">Todas</option>';
+            cats.forEach(cat => { opts += `<option value="${cat}">${cat}</option>`; });
+            sel.innerHTML = opts;
+            let memos = citations.filter(c => c.memo && c.memo.trim());
+            const fval = sel.value;
+            const sval = document.getElementById('memoSearch').value.toLowerCase();
+            if (fval) memos = memos.filter(c => c.categoria === fval);
+            if (sval) memos = memos.filter(c => c.memo.toLowerCase().includes(sval));
+            if (memos.length === 0) { list.innerHTML = '<p style="text-align:center;color:#999;padding:20px;">No hay memos</p>'; return; }
+            let html = '';
+            memos.forEach(c => {
+                html += `<div class="memo-item"><div class="memo-header"><span>${c.fecha} ${c.sesion.charAt(0).toUpperCase() + c.sesion.slice(1)}</span><span class="badge-category">${c.categoria}</span></div>
+                    ${c.codigo_invivo ? `<div style="font-style:italic;color:#666;font-size:0.65rem">"${c.codigo_invivo}"</div>` : ''}
+                    <div class="memo-text">"${escapeHtml(c.memo)}"</div></div>`;
+            });
+            list.innerHTML = html;
+        }
+
+        function filterMemos() { renderMemos(); }
+
+        function switchTab(name) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.panel-content').forEach(c => c.style.display = 'none');
+            if (name === 'dashboard') { document.getElementById('dashboard').style.display = 'block'; document.querySelectorAll('.tab')[0].classList.add('active'); }
+            else { document.getElementById('memos').style.display = 'block'; document.querySelectorAll('.tab')[1].classList.add('active'); }
+        }
+
+        function exportJSON() {
+            const data = { version: 'v3', exportado_en: new Date().toISOString(), citas: citations };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = `backup_UH_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+        }
+
+        function importJSON(input) {
+            const file = input.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (!data.version || (data.version !== 'v2' && data.version !== 'v3')) { alert('Formato inválido'); return; }
+                    let imported = data.citas || [];
+                    if (data.version === 'v2') imported = imported.map(c => ({...c, tipo_registro: 'cita', genero: 'no_identificado', turnos: null}));
+                    const existing = new Set(citations.map(c => c.id));
+                    let newC = 0, existC = 0;
+                    imported.forEach(c => { if (existing.has(c.id)) existC++; else { citations.push(c); newC++; } });
+                    saveCitations();
+                    renderCodeTree(); renderCitationsList(); renderDashboard(); renderMemos();
+                    alert(`Importación completada:\n- Nuevas: ${newC}\n- Ya existentes: ${existC}`);
+                } catch (err) { console.error(err); alert('Error al importar'); }
+            };
+            reader.readAsText(file);
+            input.value = '';
+        }
+
+        function exportCSV() {
+            const headers = ['id','fecha','sesion','tipo_registro','participante','tipo_participante','genero','categoria','codigo_invivo','tono','memo','cantidad_turnos','tiene_adjunto','cantidad_adjuntos','turnos_resumen'];
+            const rows = citations.map(c => {
+                let tr = '';
+                if (c.tipo_registro === 'intercambio' && c.turnos) {
+                    tr = c.turnos.map(t => `${t.participante}(${t.genero.substring(0,1)}): ${t.mensaje.replace(/\n/g,' ')}`).join(' | ');
+                }
+                return [c.id,c.fecha,c.sesion,c.tipo_registro,c.participante,c.tipo_participante,c.genero,c.categoria,c.codigo_invivo,c.tono,`"${(c.memo||'').replace(/"/g,'""')}"`,c.cantidad_turnos||0,c.media.length>0?'Sí':'No',c.media.length,`"${tr.replace(/"/g,'""')}"`].join(',');
+            });
+            const csv = [headers.join(','), ...rows].join('\n');
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = `uh_export_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+        }
+
+        function updateDate() {
+            const date = new Date();
+            const opts = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('currentDate').textContent = date.toLocaleDateString('es-AR', opts);
+        }
+
+        function initCharts() {
+            const ctx1 = document.getElementById('categoryChart').getContext('2d');
+            const ctx2 = document.getElementById('genderChart').getContext('2d');
+            chartInstances.category = new Chart(ctx1, { type: 'bar', data: { labels: [], datasets: [] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false } });
+            chartInstances.gender = new Chart(ctx2, { type: 'doughnut', data: { labels: [], datasets: [] }, options: { responsive: true, maintainAspectRatio: false } });
+        }
+
+        // Init
+        init();
+    </script>
+</body>
+</html>

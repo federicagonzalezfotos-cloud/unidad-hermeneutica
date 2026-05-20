@@ -1,0 +1,4 @@
+node_modules/
+backups/
+.qwen/
+.DS_Store
