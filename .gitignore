@@ -40,3 +40,8 @@ Thumbs.db
 # Miscellaneous
 coverage/
 *.code-workspace
+.qwen/
+.vercel/
+backups/
+*_backup.*
+*.bak
