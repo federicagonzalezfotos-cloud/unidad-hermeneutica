@@ -1,0 +1,2855 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UH — Uber Mendoza</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <script src="https://unpkg.com/docx@7.1.0/build/index.js"></script>
+    <script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            color: white;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 64px;
+            flex-shrink: 0;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        header h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+        }
+
+        .header-info {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .btn {
+            padding: 7px 14px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #d97706;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #bb2d3b;
+        }
+
+        .container {
+            display: flex;
+            flex: 1;
+            overflow-y: auto;
+            background: #f8fafc;
+        }
+
+        .panel-left {
+            width: 240px;
+            background: #fff;
+            border-right: 1px solid #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            box-shadow: 1px 0 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .panel-header {
+            padding: 12px;
+            border-bottom: 1px solid #e2e8f0;
+            font-weight: 600;
+            font-size: 0.85rem;
+            background: linear-gradient(to bottom, #fff, #f8fafc);
+        }
+
+        .code-tree {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+
+        .code-family {
+            margin-bottom: 8px;
+        }
+
+        .family-title {
+            font-size: 0.65rem;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+            padding-left: 8px;
+            border-left: 3px solid;
+            font-weight: 600;
+        }
+
+        .family-alg .family-title {
+            border-color: #2563eb;
+            background: linear-gradient(90deg, rgba(37, 99, 235, 0.1), transparent);
+        }
+
+        .family-sub .family-title {
+            border-color: #10b981;
+            background: linear-gradient(90deg, rgba(16, 185, 129, 0.1), transparent);
+        }
+
+        .family-col .family-title {
+            border-color: #f59e0b;
+            background: linear-gradient(90deg, rgba(245, 158, 11, 0.1), transparent);
+        }
+
+        .family-general .family-title {
+            border-color: #64748b;
+            background: linear-gradient(90deg, rgba(100, 116, 139, 0.1), transparent);
+        }
+
+        .code-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 10px;
+            margin-bottom: 2px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            transition: all 0.15s;
+        }
+
+        .code-item:hover {
+            background: #f1f5f9;
+        }
+
+        .code-item.active {
+            background: #eff6ff;
+            border-left: 3px solid #2563eb;
+            color: #2563eb;
+            font-weight: 500;
+        }
+
+        .code-count {
+            background: #f1f5f9;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            color: #64748b;
+        }
+
+        .panel-center {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            background: #f8fafc;
+            overflow-x: hidden;
+        }
+
+        .form-section {
+            background: #fff;
+            padding: 16px;
+            border-bottom: 1px solid #e2e8f0;
+            flex-shrink: 0;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-size: 0.7rem;
+            color: #64748b;
+            margin-bottom: 5px;
+            font-weight: 600;
+            letter-spacing: 0.01em;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            padding: 9px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-family: inherit;
+            background: #fff;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        .autocomplete-container {
+            position: relative;
+        }
+
+        .autocomplete-suggestions {
+            position: absolute;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            max-height: 150px;
+            overflow-y: auto;
+            z-index: 100;
+            width: 100%;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+            display: none;
+        }
+
+        .autocomplete-suggestion {
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .autocomplete-suggestion:last-child {
+            border-bottom: none;
+        }
+
+        .autocomplete-suggestion:hover {
+            background: #f8fafc;
+        }
+
+        .autocomplete-suggestion .suggestion-detail {
+            font-size: 0.65rem;
+            color: #64748b;
+        }
+
+        .autocomplete-suggestion .suggestion-match {
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .autocomplete-suggestion .suggestion-badge {
+            font-size: 0.6rem;
+            padding: 1px 5px;
+            border-radius: 3px;
+            background: #eff6ff;
+            color: #2563eb;
+        }
+
+        .participant-card {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 8px;
+            transition: all 0.2s;
+        }
+
+        .participant-card:hover {
+            border-color: #2563eb;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .participant-card .participant-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .participant-card .participant-name {
+            font-weight: 600;
+            font-size: 0.8rem;
+            color: #1e293b;
+        }
+
+        .participant-card .participant-pid {
+            font-size: 0.65rem;
+            color: #64748b;
+            background: #f1f5f9;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .participant-card .participant-info {
+            font-size: 0.7rem;
+            color: #64748b;
+            margin-bottom: 4px;
+        }
+
+        .participant-card .participant-stats {
+            display: flex;
+            gap: 8px;
+            font-size: 0.6rem;
+            color: #94a3b8;
+        }
+
+        .participant-card .participant-actions {
+            display: flex;
+            gap: 4px;
+        }
+
+        .participant-card .participant-actions button {
+            padding: 3px 8px;
+            font-size: 0.6rem;
+        }
+
+        .participant-form {
+            background: #f8fafc;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .participant-form .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .participant-form .form-grid .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            margin-bottom: 10px;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .participant-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.65rem;
+            color: #2563eb;
+            background: #eff6ff;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-weight: 500;
+        }
+
+        .form-hint {
+            font-size: 0.6rem;
+            color: #94a3b8;
+            margin-top: 3px;
+        }
+
+        /* === Citation Detail Modal === */
+        .citation-detail-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .citation-detail-content {
+            background: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .citation-detail-header {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .citation-detail-meta {
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-bottom: 10px;
+        }
+
+        .citation-detail-invivo {
+            font-style: italic;
+            color: #2563eb;
+            font-size: 0.8rem;
+            margin-bottom: 10px;
+            padding: 8px;
+            background: #f0f9ff;
+            border-radius: 6px;
+        }
+
+        .citation-detail-section {
+            margin-bottom: 12px;
+        }
+
+        .citation-detail-section strong {
+            font-size: 0.75rem;
+            color: #475569;
+        }
+
+        .citation-detail-turnos {
+            margin: 8px 0;
+        }
+
+        .citation-detail-turno {
+            padding: 8px;
+            background: #f8fafc;
+            border-radius: 6px;
+            margin-bottom: 6px;
+            font-size: 0.75rem;
+        }
+
+        .citation-detail-memo {
+            font-style: italic;
+            color: #1e293b;
+            font-size: 0.75rem;
+            padding: 10px;
+            background: #fefce8;
+            border-left: 3px solid #eab308;
+            border-radius: 0 6px 6px 0;
+            margin-bottom: 12px;
+        }
+
+        .citation-detail-media-link {
+            font-size: 0.7rem;
+            color: #2563eb;
+            text-decoration: none;
+        }
+
+        .citation-detail-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+
+        .interchange-turns {
+            background: #f8fafc;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .turn-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 6px;
+            align-items: center;
+        }
+
+        .turn-row input[type="text"] {
+            width: 50px;
+        }
+
+        .turn-row select {
+            width: 55px;
+        }
+
+        .turn-row textarea {
+            flex: 1;
+            min-height: 32px;
+            font-size: 0.7rem;
+        }
+
+        .btn-remove-turn {
+            background: #fee2e2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+            border-radius: 4px;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            transition: all 0.2s;
+        }
+
+        .btn-remove-turn:hover {
+            background: #fecaca;
+        }
+
+        .btn-add-turn {
+            width: 100%;
+            margin-top: 8px;
+            background: #64748b;
+            color: white;
+            font-size: 0.7rem;
+        }
+
+        .btn-add-turn:hover {
+            background: #475569;
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .offline-notice {
+            font-size: 0.65rem;
+            color: #64748b;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .offline-notice::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            background: #f59e0b;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .citations-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+            background: #f8fafc;
+        }
+
+        .citation-item {
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border-left: 3px solid #cbd5e1;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            transition: box-shadow 0.2s, background 0.15s;
+            cursor: pointer;
+        }
+
+        .citation-item:hover {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            background: #f8fafc;
+        }
+
+        .citation-item.intercambio {
+            border-left-color: #f59e0b;
+        }
+
+        .citation-item.cita {
+            border-left-color: #2563eb;
+        }
+
+        .citation-meta {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 6px;
+            flex-wrap: wrap;
+        }
+
+        .meta-item {
+            font-size: 0.65rem;
+            color: #64748b;
+        }
+
+        .badge-category {
+            background: #eff6ff;
+            color: #2563eb;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            font-weight: 500;
+        }
+
+        .badge-tone {
+            background: #fff7ed;
+            color: #c2410c;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            font-weight: 500;
+        }
+
+        .citation-fragment {
+            font-size: 0.78rem;
+            color: #334155;
+            line-height: 1.4;
+            margin-bottom: 6px;
+            padding-left: 8px;
+            border-left: 2px solid #e2e8f0;
+        }
+
+        .citation-invivo {
+            font-style: italic;
+            color: #64748b;
+            font-size: 0.7rem;
+        }
+
+        .citation-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        .citation-actions button {
+            padding: 4px 8px;
+            font-size: 0.65rem;
+        }
+
+        .panel-right {
+            width: 320px;
+            background: #fff;
+            border-left: 1px solid #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            box-shadow: -1px 0 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #e2e8f0;
+            background: #f8fafc;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            cursor: pointer;
+            font-size: 0.75rem;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+            font-weight: 500;
+            color: #64748b;
+        }
+
+        .tab:hover {
+            background: #f1f5f9;
+            color: #2563eb;
+        }
+
+        .tab.active {
+            border-bottom-color: #2563eb;
+            background: white;
+            color: #2563eb;
+        }
+
+        .panel-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+            padding: 14px;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #2563eb;
+            line-height: 1;
+        }
+
+        .metric-label {
+            font-size: 0.6rem;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 4px;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 14px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .chart-container h4 {
+            font-size: 0.75rem;
+            margin-bottom: 10px;
+            color: #1e293b;
+            font-weight: 600;
+        }
+
+        .suggestion-card {
+            background: #fffbeb;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border-left: 4px solid #f59e0b;
+        }
+
+        .suggestion-card.warning {
+            background: #fef2f2;
+            border-left-color: #ef4444;
+        }
+
+        .suggestion-card h4 {
+            font-size: 0.75rem;
+            margin-bottom: 6px;
+            color: #92400e;
+            font-weight: 600;
+        }
+
+        .suggestion-card.warning h4 {
+            color: #991b1b;
+        }
+
+        .memo-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .memo-item {
+            background: #f8fafc;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 0.7rem;
+            border: 1px solid #e2e8f0;
+            transition: all 0.2s;
+        }
+
+        .memo-item:hover {
+            border-color: #2563eb;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .memo-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            font-size: 0.6rem;
+            color: #64748b;
+        }
+
+        .memo-text {
+            color: #1e293b;
+            font-style: italic;
+            line-height: 1.4;
+        }
+
+        .heatmap-container {
+            overflow-x: auto;
+        }
+
+        .heatmap-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.6rem;
+        }
+
+        .heatmap-table th,
+        .heatmap-table td {
+            padding: 4px 6px;
+            text-align: center;
+            border: 1px solid #e2e8f0;
+        }
+
+        .heatmap-table th {
+            background: #f8fafc;
+            font-weight: 600;
+            color: #64748b;
+        }
+
+        .heatmap-cell {
+            width: 24px;
+            height: 24px;
+            border-radius: 3px;
+            display: inline-block;
+        }
+
+        .heatmap-cell.low {
+            background: #e0f2fe;
+        }
+
+        .heatmap-cell.medium {
+            background: #0ea5e9;
+        }
+
+        .heatmap-cell.high {
+            background: #075985;
+        }
+
+        .donut-chart {
+            display: flex;
+            justify-content: center;
+            margin: 10px 0;
+        }
+
+        .donut-chart canvas {
+            max-width: 120px;
+            max-height: 120px;
+        }
+
+        .filter-info {
+            font-size: 0.65rem;
+            color: #64748b;
+            margin-bottom: 6px;
+        }
+
+        .clear-filter {
+            font-size: 0.6rem;
+            color: #2563eb;
+            cursor: pointer;
+            text-decoration: underline;
+            font-weight: 500;
+        }
+
+        .media-preview {
+            margin-top: 6px;
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .media-preview img {
+            width: 40px;
+            height: 40px;
+            object-fit: cover;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 2px solid #e2e8f0;
+            transition: transform 0.2s;
+        }
+
+        .media-preview img:hover {
+            transform: scale(1.05);
+            border-color: #2563eb;
+        }
+
+        .media-preview .audio-icon {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f1f5f9;
+            border-radius: 6px;
+            font-size: 0.6rem;
+            color: #64748b;
+        }
+
+        .file-count {
+            font-size: 0.6rem;
+            color: #64748b;
+            margin-top: 4px;
+        }
+
+        footer {
+            background: #0f172a;
+            color: #94a3b8;
+            text-align: center;
+            padding: 12px;
+            font-size: 0.65rem;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>UH — Uber Mendoza</h1>
+        <div class="header-info">
+            <span id="currentDate">--</span>
+            <span class="badge">Modo offline</span>
+            <button class="btn btn-secondary" onclick="exportJSON()">Exportar JSON</button>
+            <button class="btn btn-secondary" onclick="document.getElementById('importFile').click()">Importar
+                JSON</button>
+            <button class="btn btn-secondary" onclick="exportDOCX()">Exportar DOCX</button>
+            <button class="btn btn-secondary" onclick="exportMarkdown()">Exportar Markdown</button>
+            <button class="btn btn-primary" onclick="exportCSV()">Exportar CSV</button>
+            <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importJSON(this)">
+        </div>
+    </header>
+    <div class="container">
+        <div class="panel-left">
+            <div class="panel-header">Sistema de Códigos
+                <button class="btn"
+                    style="width: 100%; margin-top: 5px; padding: 4px; font-size: 0.65rem; background: #e3f2fd; color: #1976D2;"
+                    onclick="clearFilter()">Ver todos</button>
+            </div>
+            <div class="code-tree" id="codeTree"></div>
+            <div style="padding: 12px; border-top: 1px solid #e2e8f0; background: #f8fafc;">
+                <button class="btn btn-secondary"
+                    style="width: 100%; font-size: 0.75rem; color: #334155; border-color: #cbd5e1; background: white;"
+                    onclick="openCategoryManager()">⚙️ Gestionar Categorías</button>
+            </div>
+        </div>
+        <div class="panel-center">
+            <div class="form-section">
+                <div class="form-grid">
+                    <div class="form-group"><label>Fecha</label><input type="date" id="citationDate"></div>
+                    <div class="form-group"><label>Sesión</label><select id="citationSession">
+                            <option value="mañana">Mañana</option>
+                            <option value="noche">Noche</option>
+                        </select></div>
+                    <div class="form-group">
+                        <label>Participante</label>
+                        <div class="autocomplete-container">
+                            <input type="text" id="participantId" placeholder="P01 o buscá por nombre..."
+                                oninput="showParticipantAutocomplete()" onfocus="showParticipantAutocomplete()"
+                                onblur="setTimeout(function() { if (!document.querySelector('.autocomplete-suggestion:hover')) hideParticipantAutocomplete(); }, 200)">
+                            <div class="autocomplete-suggestions" id="participantSuggestions"></div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Nombre <span style="font-weight:400;color:#94a3b8">(opcional — se completa solo si elegís
+                                un existente)</span></label>
+                        <input type="text" id="participantNombre" placeholder="Nombre y apellido">
+                    </div>
+                    <div class="form-group">
+                        <label>Teléfono <span style="font-weight:400;color:#94a3b8">(opcional)</span></label>
+                        <input type="tel" id="participantTelefono" placeholder="11-XXXX-XXXX">
+                    </div>
+                    <div class="form-group"><label>Tipo</label><select id="participantType">
+                            <option value="veterano">Veterano</option>
+                            <option value="nuevo">Nuevo</option>
+                            <option value="administrador">Administrador</option>
+                            <option value="sin_clasificar">Sin clasificar</option>
+                        </select></div>
+                    <div class="form-group"><label>Género</label><select id="participantGender">
+                            <option value="masculino">Masculino</option>
+                            <option value="femenino">Femenino</option>
+                            <option value="no_binario">No binario</option>
+                            <option value="no_identificado">No identificado</option>
+                        </select></div>
+                    <div class="form-group"><label>Tipo</label><select id="registrationType" onchange="toggleType()">
+                            <option value="cita">Cita individual</option>
+                            <option value="intercambio">Intercambio</option>
+                        </select></div>
+                </div>
+                <div id="individualSection" style="margin-top: 8px;">
+                    <div class="form-group"><label>Fragmento del chat</label><textarea id="fragment"
+                            placeholder="Pegá aquí el mensaje..."></textarea></div>
+                </div>
+                <div id="interchangeSection" style="display: none;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin: 6px 0 4px 0;">
+                        <h4 style="font-size: 0.75rem; color: #333; margin: 0;">Turnos del intercambio</h4>
+                        <div style="display: flex; gap: 4px;">
+                            <input type="file" id="waFile" accept=".txt" style="display: none;"
+                                onchange="importWhatsApp(this)">
+                            <button class="btn btn-secondary"
+                                style="font-size: 0.65rem; padding: 4px 8px; color: #1e293b; border-color: #cbd5e1; background: #f8fafc;"
+                                onclick="document.getElementById('waFile').click()">📱 Importar WhatsApp</button>
+                        </div>
+                    </div>
+                    <div class="interchange-turns" id="turnsContainer"></div>
+                    <button class="btn btn-add-turn" onclick="addTurn()">+ Agregar turno</button>
+                    <div class="form-group" style="margin-top: 6px;"><label>Descripción</label><textarea
+                            id="interchangeDescription" placeholder="Dinámica de la secuencia..."></textarea></div>
+                </div>
+                <div class="form-grid" style="margin-top: 8px;">
+                    <div class="form-group">
+                        <label>Categoría / Código</label>
+                        <div class="autocomplete-container">
+                            <input type="text" id="category" placeholder="Ej: ALG:..." autocomplete="off"
+                                onfocus="showCategorySuggestions()"
+                                onblur="setTimeout(function() { if (!document.querySelector('#categorySuggestions:hover')) document.getElementById('categorySuggestions').style.display = 'none'; }, 200)">
+                            <div class="autocomplete-suggestions" id="categorySuggestions"></div>
+                        </div>
+                    </div>
+                    <div class="form-group"><label>Código In Vivo</label><input type="text" id="invivoCode"
+                            placeholder="Término nativo..."></div>
+                    <div class="form-group"><label>Tono</label><select id="tone">
+                            <option value="neutro">Neutro</option>
+                            <option value="solidario">Solidario</option>
+                            <option value="frustrado">Frustrado</option>
+                            <option value="ironico">Irónico</option>
+                            <option value="tenso">Tenso</option>
+                            <option value="festivo">Festivo</option>
+                            <option value="informativo">Informativo</option>
+                        </select></div>
+                </div>
+                <div class="form-group" style="margin-top: 8px;"><label>Memo rápido</label><textarea id="memo"
+                        placeholder="¿Qué patrón observás?..."></textarea></div>
+                <div class="form-group" style="margin-top: 8px;">
+                    <label>Adjuntar evidencia (img/audio)</label>
+                    <input type="file" id="mediaFile" accept="image/*,audio/*" onchange="handleMedia(this)">
+                    <div class="media-preview" id="mediaPreview"></div>
+                    <div class="file-count" id="fileCount">0 archivos</div>
+                </div>
+                <div class="form-actions">
+                    <span class="offline-notice">Guardando en IndexedDB local</span>
+                    <button class="btn btn-primary" onclick="saveCitation()">Guardar cita</button>
+                </div>
+            </div>
+            <div class="tabs" style="border-bottom: 1px solid #e2e8f0; background: #fff; margin-top: 8px;">
+                <div class="tab active" onclick="switchPanelCenterTab('citations')">Citas Recientes</div>
+                <div class="tab" onclick="switchPanelCenterTab('fieldNotes')">Notas de Campo</div>
+            </div>
+            <div id="citationsSection" class="citations-list" style="padding: 12px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <h3 style="font-size: 0.8rem;">Citas Recientes</h3>
+                    <span id="filterInfo" class="filter-info" style="display: none;"></span>
+                </div>
+                <div id="citationsList"></div>
+            </div>
+            <div id="fieldNotesSection" class="citations-list" style="display: none; padding: 12px;">
+                <div class="form-group" style="margin-bottom: 8px;">
+                    <label>Notas de Campo</label>
+                    <textarea id="fieldNotesInput"
+                        placeholder="Escribí tus observaciones, reflexiones o notas sobre las entrevistas..."
+                        style="min-height: 100px; font-size: 0.75rem; resize: vertical;"></textarea>
+                </div>
+                <div class="form-actions" style="margin-bottom: 12px; justify-content: flex-start; gap: 8px;">
+                    <button class="btn btn-primary" onclick="saveFieldNote()">Guardar nota</button>
+                    <button class="btn btn-secondary" onclick="clearFieldNoteInput()">Limpiar</button>
+                </div>
+                <input type="text" id="fieldNotesSearch" placeholder="Buscar en notas..." oninput="renderFieldNotes()"
+                    style="width: 100%; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.75rem; margin-bottom: 8px;">
+                <div class="memo-list" id="fieldNotesList"></div>
+            </div>
+        </div>
+        <div class="panel-right">
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('dashboard')">Dashboard</div>
+                <div class="tab" onclick="switchTab('memos')">Interpretaciones</div>
+                <div class="tab" onclick="switchTab('participants')">Participantes</div>
+            </div>
+            <div id="dashboard" class="panel-content">
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-value" id="totalCitations">0</div>
+                        <div class="metric-label">Citas</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="activeCategories">0</div>
+                        <div class="metric-label">Categorías</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="daysObserved">0</div>
+                        <div class="metric-label">Días</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="totalMedia">0</div>
+                        <div class="metric-label">Archivos</div>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <h4 style="font-size: 0.75rem; margin-bottom: 6px; color: #333;">Frecuencia por Categoría</h4>
+                    <canvas id="categoryChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h4 style="font-size: 0.75rem; margin-bottom: 6px; color: #333;">Género</h4>
+                    <div class="donut-chart"><canvas id="genderChart"></canvas></div>
+                    <p style="font-size: 0.55rem; color: #666; text-align: center;">Género estimado por patrones
+                        discursivos</p>
+                </div>
+                <div class="chart-container">
+                    <h4 style="font-size: 0.75rem; margin-bottom: 6px; color: #333;">Citas vs Intercambios</h4>
+                    <div style="display: flex; gap: 12px; justify-content: center; margin-top: 6px;">
+                        <div style="text-align: center;">
+                            <div class="metric-value" style="font-size: 0.9rem;" id="citasCount">0</div>
+                            <div style="font-size: 0.55rem; color: #666;">Citas</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div class="metric-value" style="font-size: 0.9rem;" id="intercambiosCount">0</div>
+                            <div style="font-size: 0.55rem; color: #666;">Intercambios</div>
+                        </div>
+                    </div>
+                </div>
+                <div id="saturationWarnings"></div>
+                <div class="chart-container">
+                    <h4 style="font-size: 0.75rem; margin-bottom: 6px; color: #333;">Heatmap Sesión × Categoría</h4>
+                    <div class="heatmap-container">
+                        <table class="heatmap-table" id="heatmapTable">
+                            <thead>
+                                <tr>
+                                    <th></th>
+                                    <th id="heatmapHeaders"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="heatmapBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div id="memos" class="panel-content" style="display: none;">
+                <div class="form-group" style="margin-bottom: 6px;"><label>Filtrar por categoría</label><select
+                        id="memoFilter" onchange="filterMemos()">
+                        <option value="">Todas</option>
+                    </select></div>
+                <input type="text" id="memoSearch" placeholder="Buscar en memos..." oninput="filterMemos()"
+                    style="width: 100%; padding: 5px; border: 1px solid #ddd; border-radius: 3px; font-size: 0.75rem; margin-bottom: 8px;">
+                <div class="memo-list" id="memoList"></div>
+            </div>
+            <div id="participants" class="panel-content" style="display: none;">
+                <input type="text" class="search-input" id="participantsSearch"
+                    placeholder="Buscar por nombre, teléfono o PXX..." oninput="renderParticipantsList()">
+                <div class="participant-form" id="participantForm" style="display: none;">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>ID Participante</label>
+                            <input type="text" id="editParticipantPid" placeholder="P01" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label>Nombre</label>
+                            <input type="text" id="editParticipantNombre" placeholder="Nombre y apellido">
+                        </div>
+                        <div class="form-group">
+                            <label>Teléfono</label>
+                            <input type="tel" id="editParticipantTelefono" placeholder="11-XXXX-XXXX">
+                        </div>
+                        <div class="form-group">
+                            <label>Tipo</label>
+                            <select id="editParticipantTipo">
+                                <option value="veterano">Veterano</option>
+                                <option value="nuevo">Nuevo</option>
+                                <option value="administrador">Administrador</option>
+                                <option value="sin_clasificar">Sin clasificar</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-grid" style="margin-top: 6px;">
+                        <div class="form-group">
+                            <label>Género</label>
+                            <select id="editParticipantGenero">
+                                <option value="masculino">Masculino</option>
+                                <option value="femenino">Femenino</option>
+                                <option value="no_binario">No binario</option>
+                                <option value="no_identificado">No identificado</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="justify-content: flex-end;">
+                            <button class="btn btn-primary" onclick="saveParticipantFromForm()"
+                                style="width: 100%;">Guardar</button>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 6px; margin-top: 6px;">
+                        <button class="btn" onclick="closeParticipantForm()"
+                            style="flex: 1; font-size: 0.65rem; background: #94a3b8; color: white;">Cancelar</button>
+                        <button class="btn btn-danger" onclick="deleteCurrentParticipant()" id="btnDeleteParticipant"
+                            style="display: none; font-size: 0.65rem;">Eliminar</button>
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="showNewParticipantForm()"
+                    style="width: 100%; margin-bottom: 10px; font-size: 0.7rem;">+ Nuevo participante</button>
+                <div class="memo-list" id="participantsList"></div>
+            </div>
+        </div>
+    </div>
+    <footer>Unidad Hermenéutica Web | Tesina Sociología UNCuyo | GT Conductores Uber Mendoza</footer>
+    <script>
+        const STORAGE_KEY = 'uh_uber_mendoza_citas';
+        const STORAGE_KEY_FIELD_NOTES = 'uh_uber_mendoza_field_notes';
+        const STORAGE_KEY_PARTICIPANTS = 'uh_uber_mendoza_participants';
+        const FAMILIES = { 'ALG:': { name: 'Algoritmo', color: '#2196F3' }, 'SUB:': { name: 'Subjetividad', color: '#4CAF50' }, 'COL:': { name: 'Colectivo', color: '#FF9800' } };
+        const DEFAULT_FAMILY = { name: 'General', color: '#9E9E9E' };
+        let citations = [];
+        let currentFilter = null;
+        let currentTurns = [];
+        let currentMedia = [];
+        let chartInstances = {};
+        let categoriesCache = null;
+        let categoriesCountCache = {};
+        let fieldNotes = [];
+        let currentFieldNoteEditId = null;
+        let participants = [];
+        let currentParticipantEditPid = null;
+
+        // === Participantes ===
+        async function loadParticipants() {
+            const stored = await localforage.getItem(STORAGE_KEY_PARTICIPANTS);
+            if (stored) {
+                try { participants = JSON.parse(stored); }
+                catch (e) { participants = []; }
+            }
+        }
+
+        function saveParticipants() {
+            localforage.setItem(STORAGE_KEY_PARTICIPANTS, JSON.stringify(participants));
+        }
+
+        function getParticipantByPid(pid) {
+            return participants.find(p => p.pid === pid) || null;
+        }
+
+        function getParticipantByNameOrPhone(query) {
+            const q = query.toLowerCase().trim();
+            if (!q) return null;
+            const phoneQ = q.replace(/\D/g, '');
+            return participants.find(p =>
+                (p.nombre && p.nombre.toLowerCase().includes(q)) ||
+                (p.telefono && p.telefono.replace(/\D/g, '').includes(phoneQ))
+            ) || null;
+        }
+
+        function getAllParticipants() {
+            return [...participants].sort((a, b) => {
+                const countA = a.total_mensajes || 0;
+                const countB = b.total_mensajes || 0;
+                if (countB !== countA) return countB - countA;
+                return (a.nombre || '').localeCompare(b.nombre || '');
+            });
+        }
+
+        function addOrUpdateParticipant(pid, nombre, telefono, tipoParticipante, genero, skipSave) {
+            const existing = participants.find(p => p.pid === pid);
+            if (existing) {
+                existing.nombre = nombre;
+                existing.telefono = telefono;
+                existing.tipo_participante = tipoParticipante;
+                existing.genero = genero;
+                existing.fecha_modificacion = new Date().toISOString();
+                if (!skipSave) saveParticipants();
+                return;
+            }
+            if (telefono) {
+                const phoneNormalized = telefono.replace(/\D/g, '');
+                const byPhone = participants.find(p => p.telefono && p.telefono.replace(/\D/g, '') === phoneNormalized);
+                if (byPhone) {
+                    byPhone.nombre = nombre || byPhone.nombre;
+                    byPhone.tipo_participante = tipoParticipante;
+                    byPhone.genero = genero;
+                    byPhone.fecha_modificacion = new Date().toISOString();
+                    if (!skipSave) saveParticipants();
+                    return;
+                }
+            }
+            participants.push({
+                pid,
+                nombre,
+                telefono,
+                tipo_participante: tipoParticipante,
+                genero,
+                fecha_registro: new Date().toISOString(),
+                fecha_modificacion: new Date().toISOString(),
+                total_citas: 0,
+                primera_cita: null,
+                ultima_cita: null
+            });
+            if (!skipSave) saveParticipants();
+        }
+
+        function batchUpdateParticipants(updates) {
+            // updates = [{pid, nombre, telefono, tipo_participante, genero}, ...]
+            for (const u of updates) {
+                addOrUpdateParticipant(u.pid, u.nombre, u.telefono, u.tipo_participante, u.genero, true);
+            }
+            saveParticipants();
+        }
+
+        function renderParticipantsList() {
+            const listEl = document.getElementById('participantsList');
+            const search = (document.getElementById('participantsSearch')?.value || '').toLowerCase().trim();
+
+            let filtered = getAllParticipants();
+            if (search) {
+                const searchPhone = search.replace(/\D/g, '');
+                filtered = filtered.filter(p =>
+                    (p.pid && p.pid.toLowerCase().includes(search)) ||
+                    (p.nombre && p.nombre.toLowerCase().includes(search)) ||
+                    (p.telefono && p.telefono.replace(/\D/g, '').includes(searchPhone))
+                );
+            }
+
+            if (filtered.length === 0) {
+                listEl.innerHTML = '<p style="text-align:center;color:#999;padding:20px;">No hay participantes registrados. ¡Agregá el primero!</p>';
+                return;
+            }
+
+            let html = '';
+            filtered.forEach(p => {
+                const nameDisplay = p.nombre ? escapeHtml(p.nombre) : '<em style="color:#999">Sin nombre</em>';
+                const phoneDisplay = p.telefono ? escapeHtml(p.telefono) : '';
+                const infoParts = [phoneDisplay].filter(Boolean);
+
+                const totalMsg = p.total_mensajes || 0;
+                const percInd = totalMsg > 0 ? Math.round(((p.citas_individuales || 0) / totalMsg) * 100) : 0;
+                const percInt = totalMsg > 0 ? Math.round(((p.turnos_intercambio || 0) / totalMsg) * 100) : 0;
+
+                html += `<div class="participant-card">
+                    <div class="participant-header">
+                        <span class="participant-name">${nameDisplay} <span class="participant-pid">${escapeHtml(p.pid)}</span></span>
+                        <div class="participant-actions">
+                            <button class="btn btn-primary" onclick="showEditParticipantForm('${escapeHtml(p.pid)}')">Editar</button>
+                        </div>
+                    </div>
+                    ${infoParts.length ? `<div class="participant-info">${infoParts.join(' | ')}</div>` : ''}
+                    <div class="participant-stats" style="flex-direction: column; gap: 4px;">
+                        <div>
+                            <span>💬 ${totalMsg} mensajes en total</span>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <span style="color:#2563eb">👤 Individuales: ${p.citas_individuales || 0} (${percInd}%)</span>
+                            <span style="color:#f59e0b">🔄 Interacción: ${p.turnos_intercambio || 0} (${percInt}%)</span>
+                        </div>
+                        <div style="display: flex; gap: 8px; margin-top: 2px;">
+                            ${p.primera_cita ? `<span>📅 Desde ${p.primera_cita}</span>` : ''}
+                            ${p.ultima_cita ? `<span>📅 Hasta ${p.ultima_cita}</span>` : ''}
+                        </div>
+                    </div>
+                </div>`;
+            });
+            listEl.innerHTML = html;
+        }
+
+        function deleteParticipant(pid) {
+            const p = participants.find(pp => pp.pid === pid);
+            const citCount = p ? p.total_citas : 0;
+            if (!confirm(`¿Eliminar a ${pid}${p && p.nombre ? ' (' + p.nombre + ')' : ''}? Se eliminarán ${citCount} citas asociadas.`)) return;
+            citations = citations.filter(c => c.participante !== pid);
+            participants = participants.filter(p => p.pid !== pid);
+            localforage.setItem(STORAGE_KEY, JSON.stringify(citations));
+            localforage.setItem(STORAGE_KEY_PARTICIPANTS, JSON.stringify(participants));
+            invalidateCaches();
+            scheduleUpdate('citations');
+            scheduleUpdate('participants');
+        }
+
+        function updateParticipantCitationCounts() {
+            const counts = {};
+            participants.forEach(p => {
+                counts[p.pid] = { total_citas_individuales: 0, total_turnos_intercambio: 0, fechas: [] };
+            });
+
+            citations.forEach(c => {
+                let mainParticipant = c.participante;
+                if (c.tipo_registro === 'cita') {
+                    if (mainParticipant) {
+                        if (!counts[mainParticipant]) counts[mainParticipant] = { total_citas_individuales: 0, total_turnos_intercambio: 0, fechas: [] };
+                        counts[mainParticipant].total_citas_individuales++;
+                        counts[mainParticipant].fechas.push(c.fecha);
+                    }
+                } else if (c.tipo_registro === 'intercambio') {
+                    let hasTurn = false;
+                    if (c.turnos) {
+                        c.turnos.forEach(t => {
+                            if (t.participante) {
+                                if (!counts[t.participante]) counts[t.participante] = { total_citas_individuales: 0, total_turnos_intercambio: 0, fechas: [] };
+                                counts[t.participante].total_turnos_intercambio++;
+                                counts[t.participante].fechas.push(c.fecha);
+                                if (t.participante === mainParticipant) hasTurn = true;
+                            }
+                        });
+                    }
+                    if (mainParticipant && !hasTurn) {
+                        if (!counts[mainParticipant]) counts[mainParticipant] = { total_citas_individuales: 0, total_turnos_intercambio: 0, fechas: [] };
+                        counts[mainParticipant].total_turnos_intercambio++;
+                        counts[mainParticipant].fechas.push(c.fecha);
+                    }
+                }
+            });
+
+            participants.forEach(p => {
+                const data = counts[p.pid];
+                if (data) {
+                    p.citas_individuales = data.total_citas_individuales;
+                    p.turnos_intercambio = data.total_turnos_intercambio;
+                    p.total_mensajes = p.citas_individuales + p.turnos_intercambio;
+                    p.total_citas = p.total_mensajes;
+                    p.primera_cita = data.fechas.length ? data.fechas.sort()[0] : null;
+                    p.ultima_cita = data.fechas.length ? data.fechas.sort().slice(-1)[0] : null;
+                }
+            });
+            saveParticipants();
+        }
+
+        function findOrCreateParticipant(pid) {
+            const existing = getParticipantByPid(pid);
+            if (!existing) {
+                participants.push({
+                    pid,
+                    nombre: '',
+                    telefono: '',
+                    tipo_participante: 'sin_clasificar',
+                    genero: 'no_identificado',
+                    fecha_registro: new Date().toISOString(),
+                    fecha_modificacion: new Date().toISOString(),
+                    total_citas: 0,
+                    primera_cita: null,
+                    ultima_cita: null
+                });
+                saveParticipants();
+            }
+            return getParticipantByPid(pid);
+        }
+
+        // === Participantes: UI Functions ===
+        let _participantAutocompleteTimer = null;
+        function showParticipantSuggestions() {
+            clearTimeout(_participantAutocompleteTimer);
+            _participantAutocompleteTimer = setTimeout(_doParticipantAutocomplete, 150);
+        }
+
+        function _doParticipantAutocomplete() {
+            const inp = document.getElementById('participantId');
+            const sugEl = document.getElementById('participantSuggestions');
+            const val = inp.value.trim();
+
+            // Use DocumentFragment to batch DOM updates and avoid reflows
+            const fragment = document.createDocumentFragment();
+
+            if (!val) {
+                const all = getAllParticipants().slice(0, 20);
+                if (all.length === 0) { sugEl.style.display = 'none'; return; }
+
+                for (let i = 0; i < all.length; i++) {
+                    const p = all[i];
+                    const div = document.createElement('div');
+                    div.className = 'autocomplete-suggestion';
+                    div.dataset.pid = p.pid;
+                    div.onmousedown = function () { selectParticipant(p.pid); };
+
+                    const matchSpan = document.createElement('span');
+                    matchSpan.className = 'suggestion-match';
+                    matchSpan.textContent = p.pid;
+
+                    const detailSpan = document.createElement('span');
+                    detailSpan.className = 'suggestion-detail';
+                    let detail = '';
+                    if (p.nombre) detail += ' — ' + p.nombre;
+                    if (p.telefono) detail += ' • ' + p.telefono;
+                    detailSpan.textContent = detail;
+
+                    div.appendChild(matchSpan);
+                    div.appendChild(detailSpan);
+
+                    if (p.total_citas > 0) {
+                        const badge = document.createElement('span');
+                        badge.className = 'suggestion-badge';
+                        badge.textContent = p.total_citas + ' citas';
+                        div.appendChild(badge);
+                    }
+
+                    fragment.appendChild(div);
+                }
+                sugEl.innerHTML = '';
+                sugEl.appendChild(fragment);
+                sugEl.style.display = 'block';
+                return;
+            }
+
+            const q = val.toLowerCase();
+            const phoneQ = val.replace(/\D/g, '');
+            const matches = getAllParticipants().filter(p =>
+                (p.pid && p.pid.toLowerCase().includes(q)) ||
+                (p.nombre && p.nombre.toLowerCase().includes(q)) ||
+                (p.telefono && p.telefono.replace(/\D/g, '').includes(phoneQ))
+            ).slice(0, 8);
+
+            if (matches.length === 0) {
+                const isPidLike = val.match(/^p?(\d+)$/i);
+                if (isPidLike) {
+                    const suggestedPid = 'P' + isPidLike[1].padStart(2, '0');
+                    const div = document.createElement('div');
+                    div.className = 'autocomplete-suggestion';
+                    div.style.color = '#2563eb';
+                    div.style.fontWeight = '500';
+                    div.dataset.createPid = suggestedPid;
+                    div.onmousedown = function () { createParticipantFromAutocomplete(suggestedPid); };
+
+                    const span1 = document.createElement('span');
+                    span1.textContent = '➕ Crear ' + suggestedPid;
+
+                    const span2 = document.createElement('span');
+                    span2.className = 'suggestion-detail';
+                    span2.textContent = 'Nuevo participante — completá nombre y teléfono abajo';
+
+                    div.appendChild(span1);
+                    div.appendChild(span2);
+                    fragment.appendChild(div);
+                } else {
+                    sugEl.style.display = 'none';
+                    return;
+                }
+            } else {
+                for (let i = 0; i < matches.length; i++) {
+                    const p = matches[i];
+                    const div = document.createElement('div');
+                    div.className = 'autocomplete-suggestion';
+                    div.dataset.pid = p.pid;
+                    div.onmousedown = function () { selectParticipant(p.pid); };
+
+                    const matchSpan = document.createElement('span');
+                    matchSpan.className = 'suggestion-match';
+                    matchSpan.textContent = p.pid;
+
+                    const detailSpan = document.createElement('span');
+                    detailSpan.className = 'suggestion-detail';
+                    let detail = '';
+                    if (p.nombre) detail += ' — ' + p.nombre;
+                    if (p.telefono) detail += ' • ' + p.telefono;
+                    detailSpan.textContent = detail;
+
+                    div.appendChild(matchSpan);
+                    div.appendChild(detailSpan);
+
+                    if (p.total_citas > 0) {
+                        const badge = document.createElement('span');
+                        badge.className = 'suggestion-badge';
+                        badge.textContent = p.total_citas + ' citas';
+                        div.appendChild(badge);
+                    }
+
+                    fragment.appendChild(div);
+                }
+            }
+
+            sugEl.innerHTML = '';
+            sugEl.appendChild(fragment);
+            sugEl.style.display = 'block';
+        }
+
+        function hideParticipantAutocomplete() {
+            const sugEl = document.getElementById('participantSuggestions');
+            if (sugEl) sugEl.style.display = 'none';
+        }
+
+        // Alias for HTML oninput/onfocus handlers (function was named showParticipantSuggestions)
+        function showParticipantAutocomplete() {
+            showParticipantSuggestions();
+        }
+
+        function createParticipantFromAutocomplete(pid) {
+            // Check if PID already exists
+            const existing = getParticipantByPid(pid);
+            if (existing) {
+                selectParticipant(pid);
+                return;
+            }
+            // Pre-fill the form with the PID, leave name/phone blank for user to complete
+            document.getElementById('participantId').value = pid;
+            document.getElementById('participantNombre').value = '';
+            document.getElementById('participantTelefono').value = '';
+            document.getElementById('participantType').value = 'sin_clasificar';
+            document.getElementById('participantGender').value = 'no_identificado';
+            document.getElementById('participantSuggestions').style.display = 'none';
+        }
+
+        function selectParticipant(pid) {
+            const p = getParticipantByPid(pid);
+            if (!p) return;
+            document.getElementById('participantId').value = p.pid;
+            document.getElementById('participantNombre').value = p.nombre || '';
+            document.getElementById('participantTelefono').value = p.telefono || '';
+            document.getElementById('participantType').value = p.tipo_participante || 'sin_clasificar';
+            document.getElementById('participantGender').value = p.genero || 'no_identificado';
+            document.getElementById('participantSuggestions').style.display = 'none';
+        }
+
+        function updateParticipantFromForm() {
+            const pid = document.getElementById('participantId').value.trim();
+            if (!pid) return;
+            const nombre = document.getElementById('participantNombre').value.trim();
+            const telefono = document.getElementById('participantTelefono').value.trim();
+            const tipo = document.getElementById('participantType').value;
+            const genero = document.getElementById('participantGender').value;
+            addOrUpdateParticipant(pid, nombre, telefono, tipo, genero);
+        }
+
+        // === Participants Panel ===
+        function showNewParticipantForm() {
+            document.getElementById('participantForm').style.display = 'block';
+            document.getElementById('editParticipantPid').value = getNextPid();
+            document.getElementById('editParticipantNombre').value = '';
+            document.getElementById('editParticipantTelefono').value = '';
+            document.getElementById('editParticipantTipo').value = 'sin_clasificar';
+            document.getElementById('editParticipantGenero').value = 'no_identificado';
+            document.getElementById('btnDeleteParticipant').style.display = 'none';
+            currentParticipantEditPid = null;
+        }
+
+        function showEditParticipantForm(pid) {
+            const p = getParticipantByPid(pid);
+            if (!p) return;
+            document.getElementById('participantForm').style.display = 'block';
+            document.getElementById('editParticipantPid').value = p.pid;
+            document.getElementById('editParticipantNombre').value = p.nombre || '';
+            document.getElementById('editParticipantTelefono').value = p.telefono || '';
+            document.getElementById('editParticipantTipo').value = p.tipo_participante || 'sin_clasificar';
+            document.getElementById('editParticipantGenero').value = p.genero || 'no_identificado';
+            document.getElementById('btnDeleteParticipant').style.display = 'inline-block';
+            currentParticipantEditPid = pid;
+        }
+
+        function closeParticipantForm() {
+            document.getElementById('participantForm').style.display = 'none';
+            currentParticipantEditPid = null;
+        }
+
+        function saveParticipantFromForm() {
+            const pid = document.getElementById('editParticipantPid').value.trim();
+            const nombre = document.getElementById('editParticipantNombre').value.trim();
+            const telefono = document.getElementById('editParticipantTelefono').value.trim();
+            const tipo = document.getElementById('editParticipantTipo').value;
+            const genero = document.getElementById('editParticipantGenero').value;
+            addOrUpdateParticipant(pid, nombre, telefono, tipo, genero);
+            closeParticipantForm();
+        }
+
+        function deleteCurrentParticipant() {
+            if (currentParticipantEditPid) {
+                deleteParticipant(currentParticipantEditPid);
+                closeParticipantForm();
+            }
+        }
+
+        // === Debounce function para optimizar rendimiento
+        function debounce(fn, delay) {
+            let timeoutId;
+            return function (...args) {
+                clearTimeout(timeoutId);
+                timeoutId = setTimeout(() => fn.apply(this, args), delay);
+            };
+        }
+
+        function invalidateCaches() {
+            categoriesCache = null;
+            buildCategoryCounts();
+        }
+
+        // Debounced updateAll — batches rapid calls into a single render cycle
+        let _updateAllPending = false;
+        const _updateAllQueue = new Set();
+        function scheduleUpdate(section) {
+            if (section) _updateAllQueue.add(section);
+            if (_updateAllPending) return;
+            _updateAllPending = true;
+            requestAnimationFrame(() => {
+                _updateAllPending = false;
+                const sections = _updateAllQueue.size > 0 ? [..._updateAllQueue] : null;
+                _updateAllQueue.clear();
+                updateAll(sections);
+            });
+        }
+
+        async function init() {
+            // Migración desde localStorage si existe
+            if (!localStorage.getItem('uh_migrated_lf')) {
+                const lsKeys = [STORAGE_KEY, STORAGE_KEY_FIELD_NOTES, STORAGE_KEY_PARTICIPANTS];
+                for (const k of lsKeys) {
+                    if (localStorage.getItem(k)) await localforage.setItem(k, localStorage.getItem(k));
+                }
+                localStorage.setItem('uh_migrated_lf', 'true');
+            }
+            await loadCitations();
+            await loadFieldNotes();
+            await loadParticipants();
+            buildCategoryCounts();
+            updateDate();
+            renderCitationsList();
+            renderCodeTree();
+            renderDashboard();
+            renderMemos();
+            addTurn();
+            initCharts();
+            updateParticipantCitationCounts();
+            // Usar debouncing para evitar re-renders excesivos
+            const debouncedCategorySuggestions = debounce(showCategorySuggestions, 100);
+            document.getElementById('category').addEventListener('input', debouncedCategorySuggestions);
+            document.getElementById('citationDate').value = new Date().toISOString().split('T')[0];
+            // Inicializar tab de panel-center
+            switchPanelCenterTab('citations');
+        }
+
+        async function loadCitations() {
+            const stored = await localforage.getItem(STORAGE_KEY);
+            if (stored) {
+                try { citations = JSON.parse(stored); }
+                catch (e) { citations = []; }
+            }
+        }
+
+        function saveCitations() {
+            invalidateCaches();
+            localforage.setItem(STORAGE_KEY, JSON.stringify(citations));
+            scheduleUpdate('citations');
+        }
+
+        function getNextPid() {
+            const allPids = new Set();
+            participants.forEach(p => { if (p.pid) allPids.add(p.pid); });
+            citations.forEach(c => { if (c.participante && c.participante.match(/^P\d+$/)) allPids.add(c.participante); });
+            if (allPids.size === 0) return 'P01';
+            let maxNum = 0;
+            allPids.forEach(pid => {
+                const m = pid.match(/^P(\d+)$/);
+                if (m) { const n = parseInt(m[1]); if (n > maxNum) maxNum = n; }
+            });
+            return 'P' + String(maxNum + 1).padStart(2, '0');
+        }
+
+        function getFamily(code) {
+            for (const [prefix, family] of Object.entries(FAMILIES)) { if (code.startsWith(prefix)) return family; }
+            return DEFAULT_FAMILY;
+        }
+
+        function getCategories() {
+            if (categoriesCache !== null) return categoriesCache;
+            const cats = new Set();
+            for (let i = 0; i < citations.length; i++) {
+                const c = citations[i];
+                if (c.categoria) cats.add(c.categoria);
+            }
+            categoriesCache = Array.from(cats).sort();
+            return categoriesCache;
+        }
+
+        function getCategoryCount(cat) {
+            if (categoriesCountCache[cat] !== undefined) return categoriesCountCache[cat];
+            let count = 0;
+            for (let i = 0; i < citations.length; i++) {
+                if (citations[i].categoria === cat) count++;
+            }
+            categoriesCountCache[cat] = count;
+            return count;
+        }
+
+        function buildCategoryCounts() {
+            categoriesCountCache = {};
+            for (let i = 0; i < citations.length; i++) {
+                const cat = citations[i].categoria;
+                if (cat) {
+                    categoriesCountCache[cat] = (categoriesCountCache[cat] || 0) + 1;
+                }
+            }
+        }
+
+        function isSaturated(cat) {
+            const catCits = citations.filter(c => c.categoria === cat);
+            if (catCits.length < 5) return false;
+            const dates = [...new Set(catCits.map(c => c.fecha))].sort().slice(-3);
+            return dates.length < 3;
+        }
+
+        function renderCodeTree() {
+            const tree = document.getElementById('codeTree');
+            const cats = getCategories();
+            const families = { 'ALG:': [], 'SUB:': [], 'COL:': [], 'general': [] };
+            cats.forEach(cat => {
+                if (cat.startsWith('ALG:')) families['ALG:'].push(cat);
+                else if (cat.startsWith('SUB:')) families['SUB:'].push(cat);
+                else if (cat.startsWith('COL:')) families['COL:'].push(cat);
+                else families['general'].push(cat);
+            });
+            let html = '';
+            for (const [prefix, catList] of Object.entries(families)) {
+                if (catList.length === 0) continue;
+                const family = FAMILIES[prefix] || DEFAULT_FAMILY;
+                const cls = prefix === 'ALG:' ? 'family-alg' : prefix === 'SUB:' ? 'family-sub' : prefix === 'COL:' ? 'family-col' : 'family-general';
+                html += `<div class="code-family ${cls}"><div class="family-title">${family.name}</div>`;
+                catList.forEach(cat => {
+                    const active = currentFilter === cat ? 'active' : '';
+                    const saturated = isSaturated(cat) ? 'saturated' : '';
+                    const encoded = encodeURIComponent(cat);
+                    html += `<div class="code-item ${active} ${saturated}" data-cat="${encoded}" onclick="filterByCode(event)"><span>${escapeHtml(cat)}</span><span class="code-count">${categoriesCountCache[cat] || 0}</span></div>`;
+                });
+                html += '</div>';
+            }
+            tree.innerHTML = html;
+        }
+
+        // Notas de Campo Functions
+        async function loadFieldNotes() {
+            const stored = await localforage.getItem(STORAGE_KEY_FIELD_NOTES);
+            if (stored) {
+                try { fieldNotes = JSON.parse(stored); }
+                catch (e) { fieldNotes = []; }
+            }
+        }
+
+        function saveFieldNotes() {
+            localforage.setItem(STORAGE_KEY_FIELD_NOTES, JSON.stringify(fieldNotes));
+            renderFieldNotes();
+        }
+
+        function saveFieldNote() {
+            const text = document.getElementById('fieldNotesInput').value.trim();
+            if (!text) { alert('La nota no puede estar vacía'); return; }
+
+            if (currentFieldNoteEditId !== null) {
+                // Editar nota existente
+                const note = fieldNotes.find(n => n.id === currentFieldNoteEditId);
+                if (note) {
+                    note.texto = text;
+                    note.fecha_modificacion = new Date().toISOString();
+                }
+            } else {
+                // Crear nueva nota
+                const note = {
+                    id: Date.now(),
+                    texto: text,
+                    fecha: new Date().toISOString(),
+                    fecha_modificacion: new Date().toISOString()
+                };
+                fieldNotes.unshift(note);
+            }
+
+            saveFieldNotes();
+            clearFieldNoteInput();
+            alert('Nota guardada');
+        }
+
+        function deleteFieldNote(id) {
+            if (!confirm('¿Eliminar esta nota?')) return;
+            fieldNotes = fieldNotes.filter(n => n.id !== id);
+            saveFieldNotes();
+        }
+
+        function editFieldNote(id) {
+            const note = fieldNotes.find(n => n.id === id);
+            if (note) {
+                document.getElementById('fieldNotesInput').value = note.texto;
+                currentFieldNoteEditId = id;
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+
+        function clearFieldNoteInput() {
+            document.getElementById('fieldNotesInput').value = '';
+            currentFieldNoteEditId = null;
+        }
+
+        function renderFieldNotes() {
+            const list = document.getElementById('fieldNotesList');
+            const sval = document.getElementById('fieldNotesSearch').value.toLowerCase();
+
+            let notes = [...fieldNotes];
+            if (sval) {
+                notes = notes.filter(n => n.texto.toLowerCase().includes(sval));
+            }
+
+            if (notes.length === 0) {
+                list.innerHTML = '<p style="text-align:center;color:#999;padding:20px;">No hay notas de campo. ¡Anotá algo!</p>';
+                return;
+            }
+            let html = '';
+            notes.forEach(n => {
+                const date = new Date(n.fecha);
+                const dateStr = date.toLocaleDateString('es-AR');
+                html += `<div class="memo-item"><div class="memo-header">
+                    <span>${dateStr}</span>
+                    <div>
+                        <button class="btn" style="padding:2px 6px;font-size:0.6rem;background:#e3f2fd;color:#1976D2" onclick="editFieldNote(${n.id})">Editar</button>
+                        <button class="btn btn-danger" style="padding:2px 6px;font-size:0.6rem" onclick="deleteFieldNote(${n.id})">Eliminar</button>
+                    </div>
+                </div>
+                <div class="memo-text">${escapeHtml(n.texto)}</div></div>`;
+            });
+            list.innerHTML = html;
+        }
+
+        function toggleType() {
+            const isInt = document.getElementById('registrationType').value === 'intercambio';
+            document.getElementById('individualSection').style.display = isInt ? 'none' : 'block';
+            document.getElementById('interchangeSection').style.display = isInt ? 'block' : 'none';
+            if (isInt && currentTurns.length === 0) addTurn();
+        }
+
+        function addTurn() {
+            currentTurns.push({ id: Date.now() + currentTurns.length, participante: '', genero: 'masculino', mensaje: '' });
+            renderTurns();
+        }
+
+        function removeTurn(id) { currentTurns = currentTurns.filter(t => t.id !== id); renderTurns(); }
+        function updateTurn(id, field, val) { const t = currentTurns.find(x => x.id === id); if (t) t[field] = val; }
+
+        function renderTurns() {
+            const cont = document.getElementById('turnsContainer');
+            let html = '';
+            currentTurns.forEach((t, i) => {
+                const even = (i + 1) % 2 === 0;
+                html += `<div class="turn-row" style="opacity: ${even ? '0.8' : '1'}">
+                    <input type="text" placeholder="P01" value="${t.participante}" oninput="updateTurn(${t.id}, 'participante', this.value)" onblur="resolveParticipantTurn(${t.id}, this)">
+                    <select onchange="updateTurn(${t.id}, 'genero', this.value)"><option value="masculino" ${t.genero === 'masculino' ? 'selected' : ''}>M</option><option value="femenino" ${t.genero === 'femenino' ? 'selected' : ''}>F</option><option value="no_binario" ${t.genero === 'no_binario' ? 'selected' : ''}>NB</option><option value="no_identificado" ${t.genero === 'no_identificado' ? 'selected' : ''}>?</option></select>
+                    <textarea placeholder="Mensaje..." oninput="updateTurn(${t.id}, 'mensaje', this.value)">${t.mensaje}</textarea>
+                    <button class="btn-remove-turn" onclick="removeTurn(${t.id})">×</button></div>`;
+            });
+            cont.innerHTML = html;
+        }
+
+        function parseWhatsAppChat(text) {
+            const lines = text.split('\n');
+            const turns = [];
+            let currentParticipant = '';
+            let currentMessage = '';
+            const regex = /^(?:\[?(\d{1,2}\/\d{1,2}\/\d{2,4}),?\s+(\d{1,2}:\d{2}(?::\d{2})?(?:\s?[aApP][mM])?)\]?[\s-]*)(.*?):\s+(.*)$/;
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+                const match = line.match(regex);
+                if (match) {
+                    if (currentParticipant) {
+                        turns.push({ participante: currentParticipant, mensaje: currentMessage.trim() });
+                    }
+                    currentParticipant = match[3];
+                    currentMessage = match[4];
+                } else {
+                    if (currentParticipant) {
+                        currentMessage += '\n' + line;
+                    }
+                }
+            }
+            if (currentParticipant) {
+                turns.push({ participante: currentParticipant, mensaje: currentMessage.trim() });
+            }
+            return turns;
+        }
+
+        function importWhatsApp(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = e => {
+                const turnsData = parseWhatsAppChat(e.target.result);
+                if (turnsData.length === 0) {
+                    alert('No se detectaron mensajes en el formato de WhatsApp.');
+                    return;
+                }
+                document.getElementById('registrationType').value = 'intercambio';
+                toggleType();
+                currentTurns = turnsData.map((t, idx) => ({
+                    id: Date.now() + idx,
+                    participante: t.participante.substring(0, 20),
+                    genero: 'no_identificado',
+                    mensaje: t.mensaje
+                }));
+                renderTurns();
+                alert(`Se importaron ${turnsData.length} turnos.\nSugerencia: recordá anonimizar los nombres por identificadores (ej: P01).`);
+            };
+            reader.readAsText(file);
+            input.value = '';
+        }
+
+        function resolveParticipantTurn(id, el) {
+            let val = el.value.trim();
+            if (!val) return;
+            let p = getParticipantByPid(val) || getParticipantByNameOrPhone(val);
+            if (!p) {
+                let numMatch = val.match(/^(\d+)$/);
+                if (numMatch) {
+                    let code = 'P' + numMatch[1].padStart(2, '0');
+                    p = getParticipantByPid(code) || { pid: code };
+                } else {
+                    p = getAllParticipants().find(x => x.nombre && x.nombre.toLowerCase().includes(val.toLowerCase()));
+                }
+            }
+            if (p) {
+                el.value = p.pid;
+                updateTurn(id, 'participante', p.pid);
+            }
+        }
+
+        function handleMedia(input) {
+            const file = input.files[0]; if (!file) return;
+            if (currentMedia.length >= 5) { alert('Máximo 5 archivos'); return; }
+            const reader = new FileReader();
+            reader.onload = function (e) { currentMedia.push({ name: file.name, type: file.type.startsWith('image/') ? 'imagen' : 'audio', data: e.target.result }); renderMedia(); };
+            reader.readAsDataURL(file);
+            input.value = '';
+        }
+
+        function renderMedia() {
+            const cont = document.getElementById('mediaPreview');
+            const cnt = document.getElementById('fileCount');
+            let html = '';
+            currentMedia.forEach(m => {
+                if (m.type === 'imagen') html += `<img src="${m.data}" onclick="viewMedia(${currentMedia.indexOf(m)})" title="${m.name}">`;
+                else html += `<div class="audio-icon">🎵<br>${m.name}</div>`;
+            });
+            cont.innerHTML = html;
+            cnt.textContent = `${currentMedia.length} archivos`;
+        }
+
+        function viewMedia(idx) { if (currentMedia[idx].type === 'imagen') window.open(currentMedia[idx].data, '_blank'); }
+
+        function showCategorySuggestions() {
+            const inp = document.getElementById('category');
+            const sug = document.getElementById('categorySuggestions');
+            const val = inp.value.trim();
+            const valLow = val.toLowerCase();
+            const cats = getCategories();
+
+            let matches = [];
+            if (valLow.length === 0) {
+                matches = cats.slice(0, 50);
+            } else {
+                matches = cats.filter(c => c.toLowerCase().includes(valLow));
+            }
+
+            let html = '';
+
+            if (val.length > 0 && !cats.find(c => c.toLowerCase() === valLow)) {
+                const encoded = encodeURIComponent(val);
+                html += `<div class="autocomplete-suggestion" style="color: #2563eb; font-weight: 500;" data-new-cat="${encoded}" onmousedown="selectNewCat(event)"><span>➕ Agregar &quot;${escapeHtml(val)}&quot;</span></div>`;
+            }
+
+            if (matches.length > 0) {
+                html += matches.map(cat => {
+                    const encoded = encodeURIComponent(cat);
+                    const count = categoriesCountCache[cat] || 0;
+                    return `<div class="autocomplete-suggestion" data-cat="${encoded}" onmousedown="selectExistingCat(event)"><span>${escapeHtml(cat)}</span><span style="color:#999">(${count})</span></div>`;
+                }).join('');
+            }
+
+            if (html === '') {
+                sug.style.display = 'none';
+            } else {
+                sug.innerHTML = html;
+                sug.style.display = 'block';
+            }
+        }
+
+        function selectNewCat(e) { selectCat(decodeURIComponent(e.currentTarget.dataset.newCat)); }
+        function selectExistingCat(e) { selectCat(decodeURIComponent(e.currentTarget.dataset.cat)); }
+        function selectCat(cat) { document.getElementById('category').value = cat; document.getElementById('categorySuggestions').style.display = 'none'; }
+
+        function clearFilter() { currentFilter = null; renderCodeTree(); renderCitationsList(); document.getElementById('filterInfo').style.display = 'none'; }
+
+        function filterByCode(e) {
+            let code;
+            if (typeof e === 'string') {
+                code = e;
+            } else {
+                code = decodeURIComponent(e.currentTarget.dataset.cat);
+            }
+            currentFilter = code;
+            renderCodeTree();
+            renderCitationsList();
+            document.getElementById('filterInfo').innerHTML = `Filtrando: <strong>${code}</strong> | <span class="clear-filter" onclick="clearFilter()">Limpiar</span>`;
+            document.getElementById('filterInfo').style.display = 'block';
+        }
+
+        function saveCitation() {
+            const cat = document.getElementById('category').value.trim();
+            if (!cat) { alert('Seleccioná o ingresá una categoría'); return; }
+            const isInt = document.getElementById('registrationType').value === 'intercambio';
+
+            // Validate form is complete before resolving participants
+            const participantName = document.getElementById('participantNombre').value.trim();
+            const participantPhone = document.getElementById('participantTelefono').value.trim();
+            const rawPid = document.getElementById('participantId').value.trim();
+
+            if (!rawPid && !participantName) {
+                alert('Ingresá un ID de participante (P01, P02...) o escribí un nombre para crear uno nuevo.');
+                return;
+            }
+
+            let pid;
+            if (rawPid) {
+                // Try matching by PID first
+                let p = getParticipantByPid(rawPid);
+                if (!p) {
+                    // Try matching by phone number (user might have typed phone in the PID field)
+                    p = getParticipantByNameOrPhone(rawPid);
+                }
+                if (!p) {
+                    // Try matching by name (user might have typed name in the PID field)
+                    p = getAllParticipants().find(x => x.nombre && x.nombre.toLowerCase() === rawPid.toLowerCase());
+                }
+                if (p) {
+                    pid = p.pid;
+                } else {
+                    // Check if rawPid looks like a PID pattern
+                    let numMatch = rawPid.match(/^(\d+)$/);
+                    if (numMatch) {
+                        pid = 'P' + numMatch[1].padStart(2, '0');
+                    } else {
+                        pid = getNextPid();
+                    }
+                }
+            } else {
+                // No PID entered — check if phone matches an existing participant
+                if (participantPhone) {
+                    const existingByPhone = getParticipantByNameOrPhone(participantPhone);
+                    if (existingByPhone) {
+                        pid = existingByPhone.pid;
+                    } else {
+                        pid = getNextPid();
+                    }
+                } else {
+                    pid = getNextPid();
+                }
+            }
+
+            const cit = {
+                id: Date.now(), fecha: document.getElementById('citationDate').value,
+                sesion: document.getElementById('citationSession').value,
+                tipo_registro: document.getElementById('registrationType').value,
+                participante: pid,
+                tipo_participante: document.getElementById('participantType').value,
+                genero: document.getElementById('participantGender').value,
+                categoria: cat, codigo_invivo: document.getElementById('invivoCode').value.trim(),
+                tono: document.getElementById('tone').value, memo: document.getElementById('memo').value.trim(),
+                media: [...currentMedia]
+            };
+            if (isInt) {
+                cit.fragmento = null;
+                cit.turnos = currentTurns.filter(t => t.mensaje.trim());
+
+                // RESOLVER ASOCIACIÓN EN INTERCAMBIOS — batch update para evitar N renders
+                const updates = [];
+                cit.turnos.forEach(t => {
+                    let val = t.participante.trim();
+                    if (!val) {
+                        const newPid = getNextPid();
+                        t.participante = newPid;
+                        updates.push({ pid: newPid, nombre: '', telefono: '', tipo_participante: 'sin_clasificar', genero: t.genero });
+                        return;
+                    }
+
+                    let p = getParticipantByPid(val) || getParticipantByNameOrPhone(val);
+                    if (!p) {
+                        let numMatch = val.match(/^(\d+)$/);
+                        if (numMatch) {
+                            const code = 'P' + numMatch[1].padStart(2, '0');
+                            p = getParticipantByPid(code);
+                            if (!p) {
+                                updates.push({ pid: code, nombre: '', telefono: '', tipo_participante: 'sin_clasificar', genero: t.genero });
+                                p = { pid: code };
+                            }
+                        } else {
+                            p = getAllParticipants().find(x => x.nombre && x.nombre.toLowerCase().includes(val.toLowerCase()));
+                            if (!p) {
+                                const newPid = getNextPid();
+                                updates.push({ pid: newPid, nombre: val, telefono: '', tipo_participante: 'sin_clasificar', genero: t.genero });
+                                p = { pid: newPid };
+                            }
+                        }
+                    }
+                    t.participante = p.pid;
+                });
+                if (updates.length > 0) batchUpdateParticipants(updates);
+
+                cit.descripcion_intercambio = document.getElementById('interchangeDescription').value.trim();
+                cit.cantidad_turnos = cit.turnos.length;
+                if (cit.turnos.length < 2) { alert('El intercambio debe tener al menos 2 turnos'); return; }
+            } else {
+                cit.fragmento = document.getElementById('fragment').value.trim();
+                cit.turnos = null;
+                if (!cit.fragmento) { alert('La cita debe tener un fragmento'); return; }
+            }
+            // Persistir nombre y teléfono del participante
+            const nombre = document.getElementById('participantNombre').value.trim();
+            const telefono = document.getElementById('participantTelefono').value.trim();
+            // Guardar/actualizar perfil del participante PRIMERO para que updateAll() lo encuentre
+            addOrUpdateParticipant(pid, nombre, telefono, cit.tipo_participante, cit.genero);
+
+            cit.participante_nombre = nombre;
+            cit.participante_telefono = telefono;
+            citations.unshift(cit);
+            saveCitations();
+            document.getElementById('citationDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('fragment').value = ''; document.getElementById('invivoCode').value = '';
+            document.getElementById('memo').value = ''; document.getElementById('category').value = '';
+            document.getElementById('participantNombre').value = '';
+            document.getElementById('participantTelefono').value = '';
+            currentTurns = []; currentMedia = []; renderTurns(); renderMedia();
+            alert('Cita guardada');
+        }
+
+        function deleteCitation(id) {
+            if (!confirm('¿Eliminar esta cita?')) return;
+            citations = citations.filter(c => c.id !== id);
+            saveCitations();
+        }
+
+        function renderCitationsList() {
+            const list = document.getElementById('citationsList');
+            let filtered = currentFilter ? citations.filter(c => c.categoria === currentFilter) : citations;
+            const recent = filtered.slice(0, 20);
+            if (recent.length === 0) { list.innerHTML = '<p style="text-align:center;color:#999;padding:20px;">No hay citas</p>'; return; }
+            let html = '';
+            recent.forEach((c, idx) => {
+                const isInt = c.tipo_registro === 'intercambio';
+                const frag = isInt ? `${c.cantidad_turnos || 0} turnos` : (c.fragmento || '').substring(0, 80) + (c.fragmento && c.fragmento.length > 80 ? '...' : '');
+                const pName = c.participante_nombre ? ` — ${escapeHtml(c.participante_nombre)}` : '';
+                const pPhone = c.participante_telefono ? ` • 📞${escapeHtml(c.participante_telefono)}` : '';
+                const pInfo = pName || pPhone ? `<span class="meta-item">${escapeHtml(c.participante)}${pName}${pPhone}</span>` : `<span class="meta-item">${escapeHtml(c.participante)}</span>`;
+                html += `<div class="citation-item ${isInt ? 'intercambio' : 'cita'}" data-citation-id="${c.id}" onclick="openCitationDetail(${c.id})">
+                    <div class="citation-meta">${pInfo}
+                    <span class="meta-item">${c.fecha} ${c.sesion.charAt(0).toUpperCase() + c.sesion.slice(1)}</span>
+                    <span class="badge-category">${c.categoria}</span><span class="badge-tone">${c.tono}</span>
+                    ${c.codigo_invivo ? `<span class="meta-item">"${c.codigo_invivo}"</span>` : ''}
+                    ${c.media.length > 0 ? '<span class="meta-item">📎</span>' : ''}
+                    ${isInt ? '<span class="meta-item" style="color:#FF9800">🔄</span>' : ''}</div>
+                    <div class="citation-fragment">${escapeHtml(frag)}</div>
+                    ${c.memo ? `<div style="font-size:0.7rem;color:#888;font-style:italic">${escapeHtml(c.memo.substring(0, 100))}${c.memo.length > 100 ? '...' : ''}</div>` : ''}
+                    <div class="citation-actions"><button class="btn btn-danger" onclick="event.stopPropagation(); deleteCitation(${c.id})">Eliminar</button></div></div>`;
+            });
+            list.innerHTML = html;
+        }
+
+        function escapeHtml(t) { if (!t) return ''; return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;'); }
+
+        // === Citation Detail Modal ===
+        function openCitationDetail(id) {
+            const c = citations.find(x => x.id === id);
+            if (!c) return;
+            const isInt = c.tipo_registro === 'intercambio';
+            const pName = c.participante_nombre ? ` — ${c.participante_nombre}` : '';
+            const pPhone = c.participante_telefono ? ` • 📞${c.participante_telefono}` : '';
+            const pInfo = pName || pPhone ? `${c.participante}${pName}${pPhone}` : c.participante;
+
+            let html = `<div id="citationDetailModal" class="citation-detail-modal" onclick="closeCitationDetail(event)">`;
+            html += `<div class="citation-detail-content" onclick="event.stopPropagation()">`;
+            html += `<div class="citation-detail-header">`;
+            html += `<span class="badge-category">${c.categoria}</span>`;
+            html += `<span class="badge-tone">${c.tono}</span>`;
+            html += `</div>`;
+            html += `<div class="citation-detail-meta">${pInfo} — ${c.fecha} ${c.sesion.charAt(0).toUpperCase() + c.sesion.slice(1)}</div>`;
+            if (c.codigo_invivo) html += `<div class="citation-detail-invivo">"${escapeHtml(c.codigo_invivo)}"</div>`;
+            if (isInt) {
+                html += `<div class="citation-detail-section"><strong>Turnos del intercambio:</strong>`;
+                if (c.turnos) {
+                    html += `<div class="citation-detail-turnos">`;
+                    c.turnos.forEach(t => { html += `<div class="citation-detail-turno"><strong>Tu ${t.numero || ''}:</strong> ${escapeHtml(t.texto)}</div>`; });
+                    html += `</div>`;
+                }
+                html += `<div class="citation-detail-section"><strong>Descripción:</strong> ${escapeHtml(c.descripcion_intercambio || '')}</div>`;
+            } else {
+                html += `<div class="citation-detail-section"><strong>Fragmento:</strong> ${escapeHtml(c.fragmento || '')}</div>`;
+            }
+            if (c.media && c.media.length > 0) {
+                html += `<div class="citation-detail-section"><strong>Evidencia adjunta:</strong> ${c.media.map(m => `<a href="${m}" target="_blank" class="citation-detail-media-link">📎 ${m.name || 'archivo'}</a>`).join(' ')}</div>`;
+            }
+            if (c.memo) {
+                html += `<div class="citation-detail-memo"><strong>Interpretación:</strong> ${escapeHtml(c.memo)}</div>`;
+            }
+            html += `<div class="citation-detail-actions"><button class="btn btn-danger" onclick="deleteCitation(${c.id}); closeCitationDetail();">Eliminar</button>`;
+            html += `<button class="btn btn-secondary" onclick="closeCitationDetail()">Cerrar</button></div>`;
+            html += `</div></div>`;
+
+            // Create modal if it doesn't exist
+            if (!document.getElementById('citationDetailModal')) {
+                const div = document.createElement('div');
+                div.innerHTML = html;
+                document.body.appendChild(div.firstElementChild);
+            } else {
+                document.getElementById('citationDetailModal').outerHTML = html;
+            }
+        }
+
+        function closeCitationDetail(e) {
+            if (e && e.target !== e.currentTarget) return;
+            const modal = document.getElementById('citationDetailModal');
+            if (modal) modal.remove();
+        }
+
+        /**
+         * updateAll(section?) — only render the section that changed, or everything if no section
+         * Called via scheduleUpdate() for debouncing, or directly for full refresh
+         */
+        function updateAll(sections) {
+            // Map section names to render functions
+            const sectionMap = {
+                'citations': renderCitationsList,
+                'codeTree': renderCodeTree,
+                'dashboard': renderDashboard,
+                'memos': renderMemos,
+                'fieldNotes': renderFieldNotes,
+                'participants': renderParticipantsList,
+            };
+
+            if (sections && sections.length > 0) {
+                // Only render requested sections
+                for (const s of sections) {
+                    const fn = sectionMap[s];
+                    if (!fn) continue;
+
+                    if (s === 'dashboard') {
+                        renderDashboard();
+                    } else if (s === 'participants') {
+                        updateParticipantCitationCounts();
+                        renderParticipantsList();
+                    } else if (s === 'fieldNotes') {
+                        if (document.getElementById('fieldNotesSection').style.display !== 'none') {
+                            fn();
+                        }
+                    } else {
+                        fn();
+                    }
+                }
+            } else {
+                // Full render — no section filtering
+                renderCitationsList();
+                renderCodeTree();
+                renderDashboard();
+                renderMemos();
+                updateParticipantCitationCounts();
+                if (document.getElementById('fieldNotesSection').style.display !== 'none') {
+                    renderFieldNotes();
+                }
+                renderParticipantsList();
+            }
+        }
+
+        function renderDashboard() {
+            document.getElementById('totalCitations').textContent = citations.length;
+            document.getElementById('activeCategories').textContent = getCategories().length;
+            document.getElementById('daysObserved').textContent = [...new Set(citations.map(c => c.fecha))].length;
+            document.getElementById('totalMedia').textContent = citations.reduce((s, c) => s + c.media.length, 0);
+            const cc = citations.filter(c => c.tipo_registro === 'cita').length;
+            const ic = citations.filter(c => c.tipo_registro === 'intercambio').length;
+            document.getElementById('citasCount').textContent = cc;
+            document.getElementById('intercambiosCount').textContent = ic;
+
+            renderCategoryChart();
+            renderGenderChart();
+            renderHeatmap();
+            renderSaturationWarnings();
+        }
+
+        function renderCategoryChart() {
+            const cats = getCategories();
+            const counts = cats.map(c => getCategoryCount(c));
+            const colors = cats.map(c => getFamily(c).color);
+            const key = cats.join('|');
+
+            if (!chartInstances.category || chartInstances.category._key !== key) {
+                if (chartInstances.category) chartInstances.category.destroy();
+                const ctx = document.getElementById('categoryChart').getContext('2d');
+                chartInstances.category = new Chart(ctx, {
+                    type: 'bar',
+                    data: { labels: cats, datasets: [{ label: 'Frecuencia', data: counts, backgroundColor: colors, borderColor: colors, borderWidth: 1 }] },
+                    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, scales: { x: { beginAtZero: true } } }
+                });
+                chartInstances.category._key = key;
+            } else {
+                chartInstances.category.data.labels = cats;
+                chartInstances.category.data.datasets[0].data = counts;
+                chartInstances.category.data.datasets[0].backgroundColor = colors;
+                chartInstances.category.data.datasets[0].borderColor = colors;
+                chartInstances.category.update('none');
+            }
+        }
+
+        function renderGenderChart() {
+            const gc = { 'masculino': 0, 'femenino': 0, 'no_binario': 0, 'no_identificado': 0 };
+            citations.forEach(c => {
+                if (c.tipo_registro === 'intercambio' && c.turnos && c.turnos.length > 0) {
+                    gc[c.turnos[0].genero || 'no_identificado'] = (gc[c.turnos[0].genero || 'no_identificado'] || 0) + 1;
+                } else { gc[c.genero || 'no_identificado'] = (gc[c.genero || 'no_identificado'] || 0) + 1; }
+            });
+            if (chartInstances.gender) {
+                chartInstances.gender.data.datasets[0].data = [gc['masculino'], gc['femenino'], gc['no_binario'], gc['no_identificado']];
+                chartInstances.gender.update('none');
+            } else {
+                const ctx = document.getElementById('genderChart').getContext('2d');
+                chartInstances.gender = new Chart(ctx, { type: 'doughnut', data: { labels: ['Masculino', 'Femenino', 'No binario', 'No identificado'], datasets: [{ data: [gc['masculino'], gc['femenino'], gc['no_binario'], gc['no_identificado']], backgroundColor: ['#2196F3', '#E91E63', '#9C27B0', '#9E9E9E'], borderWidth: 1 }] }, options: { responsive: true, maintainAspectRatio: false } });
+            }
+        }
+
+        function renderHeatmap() {
+            const cats = getCategories();
+            const ses = ['mañana', 'noche'];
+            const counts = {};
+            ses.forEach(s => { counts[s] = {}; cats.forEach(cat => { counts[s][cat] = citations.filter(c => c.sesion === s && c.categoria === cat).length; }); });
+            let thead = '<th>Sesión / Categoría</th>';
+            cats.forEach(cat => { thead += `<th>${cat.substring(0, 8)}${cat.length > 8 ? '...' : ''}</th>`; });
+            let tbody = '';
+            ses.forEach(s => {
+                tbody += `<tr><td>${s.charAt(0).toUpperCase() + s.slice(1)}</td>`;
+                cats.forEach(cat => {
+                    const cnt = counts[s][cat] || 0;
+                    let cls = 'heatmap-cell';
+                    if (cnt > 0) cls += cnt >= 5 ? ' high' : cnt >= 3 ? ' medium' : ' low';
+                    tbody += `<td class="${cls}">${cnt > 0 ? cnt : ''}</td>`;
+                });
+                tbody += '</tr>';
+            });
+            document.getElementById('heatmapHeaders').innerHTML = thead;
+            document.getElementById('heatmapBody').innerHTML = tbody;
+        }
+
+        function renderSaturationWarnings() {
+            const cont = document.getElementById('saturationWarnings');
+            const saturated = getCategories().filter(c => isSaturated(c));
+            if (saturated.length === 0) { cont.innerHTML = ''; return; }
+            let html = '<div class="suggestion-card warning"><h4>⚠️ Posible saturación teórica:</h4>';
+            saturated.forEach(c => { html += `<p style="margin:4px 0;font-size:0.7rem">${c}</p>`; });
+            html += '<p style="font-size:0.55rem;margin-top:6px;color:#721c24;">Requiere tu juicio interpretativo — este indicador es orientativo.</p></div>';
+            cont.innerHTML = html;
+        }
+
+        function renderMemos() {
+            const list = document.getElementById('memoList');
+            const sel = document.getElementById('memoFilter');
+            const cats = getCategories();
+            let opts = '<option value="">Todas</option>';
+            cats.forEach(cat => { opts += `<option value="${cat}">${cat}</option>`; });
+            sel.innerHTML = opts;
+            let memos = citations.filter(c => c.memo && c.memo.trim());
+            const fval = sel.value;
+            const sval = document.getElementById('memoSearch').value.toLowerCase();
+            if (fval) memos = memos.filter(c => c.categoria === fval);
+            if (sval) memos = memos.filter(c => c.memo.toLowerCase().includes(sval));
+            if (memos.length === 0) { list.innerHTML = '<p style="text-align:center;color:#999;padding:20px;">No hay memos</p>'; return; }
+            let html = '';
+            memos.forEach(c => {
+                html += `<div class="memo-item"><div class="memo-header"><span>${c.fecha} ${c.sesion.charAt(0).toUpperCase() + c.sesion.slice(1)}</span><span class="badge-category">${c.categoria}</span></div>
+                    ${c.codigo_invivo ? `<div style="font-style:italic;color:#666;font-size:0.65rem">"${c.codigo_invivo}"</div>` : ''}
+                    <div class="memo-text">"${escapeHtml(c.memo)}"</div></div>`;
+            });
+            list.innerHTML = html;
+        }
+
+        function filterMemos() {
+            const sel = document.getElementById('memoFilter');
+            const sval = document.getElementById('memoSearch').value.toLowerCase();
+            const fval = sel.value;
+            const list = document.getElementById('memoList');
+            let memos = citations.filter(c => c.memo && c.memo.trim());
+            if (fval) memos = memos.filter(c => c.categoria === fval);
+            if (sval) memos = memos.filter(c => c.memo.toLowerCase().includes(sval));
+            if (memos.length === 0) { list.innerHTML = '<p style="text-align:center;color:#999;padding:20px;">No hay memos</p>'; return; }
+            let html = '';
+            memos.forEach(c => {
+                html += `<div class="memo-item"><div class="memo-header"><span>${c.fecha} ${c.sesion.charAt(0).toUpperCase() + c.sesion.slice(1)}</span><span class="badge-category">${c.categoria}</span></div>
+                    ${c.codigo_invivo ? `<div style="font-style:italic;color:#666;font-size:0.65rem">"${c.codigo_invivo}"</div>` : ''}
+                    <div class="memo-text">"${escapeHtml(c.memo)}"</div></div>`;
+            });
+            list.innerHTML = html;
+        }
+
+        function switchTab(name) {
+            document.querySelectorAll('.panel-right .tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.panel-right .panel-content').forEach(c => c.style.display = 'none');
+            if (name === 'dashboard') {
+                document.getElementById('dashboard').style.display = 'block';
+                document.querySelectorAll('.panel-right .tab')[0].classList.add('active');
+            } else if (name === 'memos') {
+                document.getElementById('memos').style.display = 'block';
+                document.querySelectorAll('.panel-right .tab')[1].classList.add('active');
+            } else if (name === 'participants') {
+                document.getElementById('participants').style.display = 'block';
+                document.querySelectorAll('.panel-right .tab')[2].classList.add('active');
+                renderParticipantsList();
+            }
+        }
+
+        function switchPanelCenterTab(name) {
+            document.querySelectorAll('.panel-center .tab').forEach(t => t.classList.remove('active'));
+            document.getElementById('citationsSection').style.display = 'none';
+            document.getElementById('fieldNotesSection').style.display = 'none';
+            if (name === 'citations') {
+                document.getElementById('citationsSection').style.display = 'block';
+                document.querySelectorAll('.panel-center .tab')[0].classList.add('active');
+            } else if (name === 'fieldNotes') {
+                document.getElementById('fieldNotesSection').style.display = 'block';
+                document.querySelectorAll('.panel-center .tab')[1].classList.add('active');
+            }
+        }
+
+        function openCategoryManager() {
+            const cats = getCategories();
+            let html = '<div class="citation-detail-content"><h3>Gestionar Categorías</h3><div style="margin: 10px 0; max-height: 50vh; overflow-y: auto;">';
+            html += '<p style="font-size:0.75rem; color:#64748b; margin-bottom: 10px;">Edita el nombre de una categoría para renombrarla. Si usas el nombre de una categoría existente, se fusionarán.</p>';
+
+            cats.forEach((cat, idx) => {
+                const escapedCat = escapeHtml(cat);
+                const encodedCat = encodeURIComponent(cat);
+                html += `<div style="display:flex; gap: 8px; margin-bottom: 6px; align-items: center;">
+                    <input type="text" id="cat_edit_${idx}" value="${escapedCat}" style="flex:1; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.75rem;">
+                    <button class="btn btn-primary" style="padding: 6px 10px; font-size: 0.65rem;" onclick="renameCategory(${idx}, decodeURIComponent('${encodedCat}'))">Renombrar</button>
+                </div>`;
+            });
+
+            html += '</div><div style="text-align: right;"><button class="btn btn-secondary" onclick="document.getElementById(\'categoryManagerModal\').style.display=\'none\'">Cerrar</button></div></div>';
+
+            let modal = document.getElementById('categoryManagerModal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'categoryManagerModal';
+                modal.className = 'citation-detail-modal';
+                document.body.appendChild(modal);
+            }
+            modal.innerHTML = html;
+            modal.style.display = 'flex';
+        }
+
+        function renameCategory(idx, oldCat) {
+            const newCat = document.getElementById('cat_edit_' + idx).value.trim();
+            if (!newCat || newCat === oldCat) {
+                alert('No hay cambios.');
+                return;
+            }
+            if (!confirm(`¿Renombrar "${oldCat}" a "${newCat}" en todas las citas?`)) return;
+
+            let updated = 0;
+            citations.forEach(c => {
+                if (c.categoria === oldCat) {
+                    c.categoria = newCat;
+                    updated++;
+                }
+            });
+
+            saveCitations();
+            openCategoryManager();
+            alert(`Se actualizaron ${updated} citas.`);
+        }
+
+        function exportJSON() {
+            const data = {
+                version: 'v4',
+                exportado_en: new Date().toISOString(),
+                citas: citations,
+                fieldNotes: fieldNotes,
+                participants: participants
+            };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = `backup_UH_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+        }
+
+        function importJSON(input) {
+            const file = input.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (!data.version || !['v2', 'v3', 'v4'].includes(data.version)) { alert('Formato inválido'); return; }
+
+                    let imported = data.citas || [];
+                    if (data.version === 'v2') imported = imported.map(c => ({ ...c, tipo_registro: 'cita', genero: 'no_identificado', turnos: null }));
+                    const existing = new Set(citations.map(c => c.id));
+                    let newC = 0, existC = 0;
+                    imported.forEach(c => { if (existing.has(c.id)) existC++; else { citations.push(c); newC++; } });
+
+                    if (data.fieldNotes) {
+                        const existingNotes = new Set(fieldNotes.map(n => n.id));
+                        data.fieldNotes.forEach(n => { if (!existingNotes.has(n.id)) fieldNotes.push(n); });
+                    }
+                    if (data.participants) {
+                        const existingPids = new Set(participants.map(p => p.pid));
+                        data.participants.forEach(p => { if (!existingPids.has(p.pid)) participants.push(p); });
+                    }
+
+                    saveCitations();
+                    saveFieldNotes();
+                    saveParticipants();
+                    scheduleUpdate('fieldNotes');
+                    scheduleUpdate('participants');
+                    alert(`Importación completada:\n- Citas Nuevas: ${newC}\n- Citas Existentes: ${existC}\n- Notas y Participantes sincronizados.`);
+                } catch (err) { console.error(err); alert('Error al importar. Verificá que el archivo sea JSON válido.'); }
+            };
+            reader.readAsText(file);
+            input.value = '';
+        }
+
+        function exportCSV() {
+            const dataToExport = citations.map(c => {
+                let tr = '';
+                if (c.tipo_registro === 'intercambio' && c.turnos) {
+                    tr = c.turnos.map(t => `${t.participante}(${(t.genero || 'no_identificado').substring(0, 1).toUpperCase()}): ${t.mensaje}`).join('\n');
+                }
+                return {
+                    id: c.id,
+                    fecha: c.fecha,
+                    sesion: c.sesion,
+                    tipo_registro: c.tipo_registro,
+                    participante: c.participante,
+                    tipo_participante: c.tipo_participante,
+                    genero: c.genero,
+                    categoria: c.categoria,
+                    codigo_invivo: c.codigo_invivo,
+                    tono: c.tono,
+                    fragmento: c.fragmento || '',
+                    memo: c.memo || '',
+                    cantidad_turnos: c.cantidad_turnos || 0,
+                    tiene_adjunto: c.media && c.media.length > 0 ? 'Sí' : 'No',
+                    cantidad_adjuntos: c.media ? c.media.length : 0,
+                    turnos_resumen: tr
+                };
+            });
+
+            const csv = Papa.unparse(dataToExport, {
+                quotes: true,
+                delimiter: ",",
+                header: true
+            });
+
+            // BOM for Excel UTF-8 support
+            const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = `uh_export_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+        }
+
+        function exportDOCX() {
+            const { Document, Paragraph, HeadingLevel, Table, TableRow, TableCell, TextRun, WidthType, AlignmentType, Packer } = docx;
+
+            const doc = new Document({
+                sections: [{
+                    properties: {},
+                    children: [
+                        new Paragraph({
+                            text: 'Unidad Hermenéutica - Exportación',
+                            heading: HeadingLevel.HEADING_1,
+                            alignment: AlignmentType.CENTER,
+                            run: { size: 28, bold: true, color: '2563eb' }
+                        }),
+                        new Paragraph({
+                            text: `Fecha de exportación: ${new Date().toLocaleDateString('es-AR')}`,
+                            alignment: AlignmentType.CENTER,
+                            run: { size: 14, italics: true }
+                        }),
+                        new Paragraph({ text: '\n' }),
+                        new Paragraph({
+                            text: `Total de citas: ${citations.length}`,
+                            alignment: AlignmentType.CENTER,
+                            run: { size: 16, bold: true }
+                        }),
+                        new Paragraph({ text: '\n' })
+                    ]
+                }]
+            });
+
+            citations.forEach(c => {
+                doc.sections[0].children.push(
+                    new Paragraph({
+                        text: '---',
+                        run: { size: 10 }
+                    }),
+                    new Paragraph({
+                        text: c.categoria || 'Sin categoría',
+                        heading: HeadingLevel.HEADING_2,
+                        run: { size: 20, bold: true, color: '2563eb' }
+                    }),
+                    new Paragraph({ text: '\n' }),
+                    new Paragraph({
+                        text: `Fecha: ${c.fecha} | Sesión: ${c.sesion}`,
+                        run: { size: 12 }
+                    }),
+                    new Paragraph({
+                        text: `Participante: ${c.participante} (${c.tipo_participante}) | Género: ${c.genero}`,
+                        run: { size: 12 }
+                    }),
+                    new Paragraph({
+                        text: `Tono: ${c.tono} | Código In Vivo: ${c.codigo_invivo}`,
+                        run: { size: 12 }
+                    }),
+                    new Paragraph({ text: '\n' })
+                );
+
+                if (c.tipo_registro === 'cita') {
+                    doc.sections[0].children.push(
+                        new Paragraph({
+                            text: c.fragmento,
+                            heading: HeadingLevel.HEADING_3,
+                            run: { size: 14, italics: true }
+                        })
+                    );
+                } else if (c.tipo_registro === 'intercambio' && c.turnos) {
+                    doc.sections[0].children.push(
+                        new Paragraph({ text: '\nIntercambio:\n', run: { bold: true, size: 14 } })
+                    );
+                    c.turnos.forEach((t, i) => {
+                        doc.sections[0].children.push(
+                            new Paragraph({
+                                text: `${i + 1}. ${t.participante}: ${t.mensaje}`,
+                                run: { size: 12 }
+                            })
+                        );
+                    });
+                    if (c.descripcion) {
+                        doc.sections[0].children.push(
+                            new Paragraph({ text: '\n' + c.descripcion, run: { size: 12, italics: true } })
+                        );
+                    }
+                }
+
+                if (c.memo) {
+                    doc.sections[0].children.push(
+                        new Paragraph({ text: '\nMemo: ' + c.memo, run: { size: 12, italics: true, color: '64748b' } })
+                    );
+                }
+                doc.sections[0].children.push(new Paragraph({ text: '\n' }));
+            });
+
+            Packer.toBlob(doc).then(blob => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `uh_export_${new Date().toISOString().split('T')[0]}.docx`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            });
+        }
+
+        function exportMarkdown() {
+            let md = '# Exportación Unidad Hermenéutica\n\n';
+            md += `**Fecha de exportación:** ${new Date().toLocaleDateString('es-AR')}\n\n`;
+            md += `**Total de citas:** ${citations.length}\n\n`;
+            md += '---\n\n';
+
+            citations.forEach((c, index) => {
+                md += `## ${index + 1}. ${c.categoria || 'Sin categoría'}\n\n`;
+                md += `**Fecha:** ${c.fecha} | **Sesión:** ${c.sesion}\n\n`;
+                md += `**Participante:** ${c.participante} (${c.tipo_participante}) | **Género:** ${c.genero}\n\n`;
+                md += `**Tono:** ${c.tono} | **Código In Vivo:** ${c.codigo_invivo}\n\n`;
+
+                if (c.tipo_registro === 'cita') {
+                    md += `> ${c.fragmento}\n\n`;
+                } else if (c.tipo_registro === 'intercambio' && c.turnos) {
+                    md += '**Intercambio:**\n\n';
+                    c.turnos.forEach((t, i) => {
+                        md += `${i + 1}. **${t.participante}**: ${t.mensaje}\n`;
+                    });
+                    md += `\n${c.descripcion || ''}\n\n`;
+                }
+
+                if (c.memo) {
+                    md += `**Memo:** ${c.memo}\n\n`;
+                }
+                md += '---\n\n';
+            });
+
+            const blob = new Blob([md], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = `uh_export_${new Date().toISOString().split('T')[0]}.md`;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+        }
+
+        function updateDate() {
+            const date = new Date();
+            const opts = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('currentDate').textContent = date.toLocaleDateString('es-AR', opts);
+        }
+
+        function initCharts() {
+            const ctx1 = document.getElementById('categoryChart').getContext('2d');
+            const ctx2 = document.getElementById('genderChart').getContext('2d');
+            chartInstances.category = new Chart(ctx1, { type: 'bar', data: { labels: [], datasets: [] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false } });
+            chartInstances.gender = new Chart(ctx2, { type: 'doughnut', data: { labels: [], datasets: [] }, options: { responsive: true, maintainAspectRatio: false } });
+        }
+
+        // Init
+        init();
+    </script>
+</body>
+
+</html>
+
+<!-- NUEVAS FUNCIONALIDADES A AGREGAR -->
+<!-- 
+1. Campo Hora en formularios
+2. Notas de Campo (tab independiente)
+3. Objetivos de tesis (4 botones)
+4. Copiar a Docs (citas y notas)
+-->
