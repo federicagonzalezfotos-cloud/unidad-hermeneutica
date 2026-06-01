@@ -1736,7 +1736,6 @@
             renderCitationsList();
             renderCodeTree();
             renderDashboard();
-            renderMemos();
             addTurn();
             initCharts();
             updateParticipantCitationCounts();
@@ -1760,6 +1759,8 @@
             invalidateCaches();
             localforage.setItem(STORAGE_KEY, JSON.stringify(citations));
             scheduleUpdate('citations');
+            scheduleUpdate('codeTree');
+            scheduleUpdate('dashboard');
         }
 
         function getNextPid() {
@@ -1812,10 +1813,12 @@
         }
 
         function isSaturated(cat) {
-            const catCits = citations.filter(c => c.categoria === cat);
-            if (catCits.length < 5) return false;
-            const dates = [...new Set(catCits.map(c => c.fecha))].sort().slice(-3);
-            return dates.length < 3;
+            if ((categoriesCountCache[cat] || 0) < 5) return false;
+            const dates = new Set();
+            for (let i = 0; i < citations.length; i++) {
+                if (citations[i].categoria === cat && citations[i].fecha) dates.add(citations[i].fecha);
+            }
+            return dates.size < 3;
         }
 
         function renderCodeTree() {
@@ -1883,7 +1886,7 @@
 
             saveFieldNotes();
             clearFieldNoteInput();
-            alert('Nota guardada');
+            showToast('Nota guardada ✓');
         }
 
         function deleteFieldNote(id) {
@@ -2242,7 +2245,7 @@
             document.getElementById('participantNombre').value = '';
             document.getElementById('participantTelefono').value = '';
             currentTurns = []; currentMedia = []; renderTurns(); renderMedia();
-            alert('Cita guardada');
+            showToast('Cita guardada ✓');
         }
 
         function deleteCitation(id) {
@@ -2277,6 +2280,14 @@
             list.innerHTML = html;
         }
 
+        function showToast(msg, type = 'success') {
+            const t = document.createElement('div');
+            t.textContent = msg;
+            t.style.cssText = `position:fixed;bottom:24px;right:24px;background:${type === 'success' ? '#10b981' : '#ef4444'};color:white;padding:10px 18px;border-radius:8px;font-size:0.8rem;font-weight:500;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,0.15);opacity:1;transition:opacity 0.4s`;
+            document.body.appendChild(t);
+            setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 400); }, 2200);
+        }
+
         function escapeHtml(t) { if (!t) return ''; return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;'); }
 
         // === Citation Detail Modal ===
@@ -2300,7 +2311,7 @@
                 html += `<div class="citation-detail-section"><strong>Turnos del intercambio:</strong>`;
                 if (c.turnos) {
                     html += `<div class="citation-detail-turnos">`;
-                    c.turnos.forEach(t => { html += `<div class="citation-detail-turno"><strong>Tu ${t.numero || ''}:</strong> ${escapeHtml(t.texto)}</div>`; });
+                    c.turnos.forEach((t, i) => { html += `<div class="citation-detail-turno"><strong>${escapeHtml(t.participante || ('T' + (i+1)))}:</strong> ${escapeHtml(t.mensaje || t.texto || '')}</div>`; });
                     html += `</div>`;
                 }
                 html += `<div class="citation-detail-section"><strong>Descripción:</strong> ${escapeHtml(c.descripcion_intercambio || '')}</div>`;
@@ -2438,8 +2449,13 @@
         function renderHeatmap() {
             const cats = getCategories();
             const ses = ['mañana', 'noche'];
-            const counts = {};
-            ses.forEach(s => { counts[s] = {}; cats.forEach(cat => { counts[s][cat] = citations.filter(c => c.sesion === s && c.categoria === cat).length; }); });
+            const counts = { 'mañana': {}, 'noche': {} };
+            for (let i = 0; i < citations.length; i++) {
+                const c = citations[i];
+                if (c.sesion && c.categoria && counts[c.sesion]) {
+                    counts[c.sesion][c.categoria] = (counts[c.sesion][c.categoria] || 0) + 1;
+                }
+            }
             let thead = '<th>Sesión / Categoría</th>';
             cats.forEach(cat => { thead += `<th>${cat.substring(0, 8)}${cat.length > 8 ? '...' : ''}</th>`; });
             let tbody = '';
