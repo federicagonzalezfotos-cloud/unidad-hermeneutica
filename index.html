@@ -639,6 +639,68 @@
             background: #f8fafc;
         }
 
+        .editing-mode .form-section {
+            border-left: 3px solid #2563eb;
+        }
+
+        .turn-row-wrap { margin-bottom: 6px; }
+
+        .turn-media-row {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+            padding: 3px 0 0 4px;
+        }
+
+        .turn-media-thumb {
+            position: relative;
+            display: inline-block;
+        }
+
+        .turn-media-thumb img {
+            width: 34px;
+            height: 34px;
+            object-fit: cover;
+            border-radius: 4px;
+            border: 1px solid #e2e8f0;
+            cursor: pointer;
+        }
+
+        .turn-media-thumb .remove-turn-media {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            background: #dc2626;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 14px;
+            height: 14px;
+            font-size: 0.5rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+        }
+
+        .btn-turn-media {
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            width: 26px;
+            height: 26px;
+            cursor: pointer;
+            font-size: 0.65rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #64748b;
+            flex-shrink: 0;
+        }
+
+        .btn-turn-media:hover { background: #e2e8f0; }
+
         .citation-item {
             background: white;
             padding: 12px;
@@ -1211,8 +1273,14 @@
                     <div class="file-count" id="fileCount">0 archivos</div>
                 </div>
                 <div class="form-actions">
-                    <span class="offline-notice">Guardando en IndexedDB local</span>
-                    <button class="btn btn-primary" onclick="saveCitation()">Guardar cita</button>
+                    <div>
+                        <span class="offline-notice">Guardando en IndexedDB local</span>
+                        <div id="editingIndicator" style="display:none; font-size:0.7rem; color:#2563eb; font-weight:600; margin-top:4px;"></div>
+                    </div>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <button id="cancelEditBtn" class="btn btn-secondary" onclick="cancelEdit()" style="display:none; font-size:0.75rem; color:#dc2626; border-color:#fecaca; background:#fef2f2;">✕ Cancelar</button>
+                        <button id="saveBtn" class="btn btn-primary" onclick="saveCitation()">Guardar cita</button>
+                    </div>
                 </div>
             </div>
             <div class="tabs" id="centerTabs" style="border-bottom: 1px solid #e2e8f0; background: #fff; margin-top: 8px;">
@@ -1340,6 +1408,7 @@
         let currentFieldNoteEditId = null;
         let participants = [];
         let currentParticipantEditPid = null;
+        let editingCitationId = null; // null = nuevo, number = editando
 
         // === Participantes ===
         async function loadParticipants() {
@@ -1831,8 +1900,11 @@
             // Usar debouncing para evitar re-renders excesivos
             const debouncedCategorySuggestions = debounce(showCategorySuggestions, 100);
             document.getElementById('category').addEventListener('input', debouncedCategorySuggestions);
-            document.getElementById('citationDate').value = new Date().toISOString().split('T')[0];
-            document.getElementById('citationTime').value = new Date().toTimeString().slice(0, 5);
+            // Fecha de la última cita cargada, o hoy si no hay ninguna
+            const _lastDate = citations.length > 0 ? citations[0].fecha : new Date().toISOString().split('T')[0];
+            const _lastTime = citations.length > 0 && citations[0].hora ? citations[0].hora : new Date().toTimeString().slice(0, 5);
+            document.getElementById('citationDate').value = _lastDate;
+            document.getElementById('citationTime').value = _lastTime;
             // Inicializar tab de panel-center
             switchPanelCenterTab('citations');
         }
@@ -2036,23 +2108,65 @@
         }
 
         function addTurn() {
-            currentTurns.push({ id: Date.now() + currentTurns.length, participante: '', genero: 'masculino', mensaje: '' });
+            currentTurns.push({ id: Date.now() + currentTurns.length, participante: '', genero: 'masculino', mensaje: '', media: [] });
             renderTurns();
         }
 
         function removeTurn(id) { currentTurns = currentTurns.filter(t => t.id !== id); renderTurns(); }
         function updateTurn(id, field, val) { const t = currentTurns.find(x => x.id === id); if (t) t[field] = val; }
 
+        function handleTurnMedia(turnId, input) {
+            const file = input.files[0];
+            if (!file) return;
+            const t = currentTurns.find(x => x.id === turnId);
+            if (!t) return;
+            if (!t.media) t.media = [];
+            if (t.media.length >= 3) { showToast('Máximo 3 imágenes por turno', 'error'); return; }
+            const reader = new FileReader();
+            reader.onload = e => {
+                t.media.push({ name: file.name, type: 'imagen', data: e.target.result });
+                renderTurns();
+            };
+            reader.readAsDataURL(file);
+            input.value = '';
+        }
+
+        function removeTurnMedia(turnId, idx) {
+            const t = currentTurns.find(x => x.id === turnId);
+            if (t && t.media) { t.media.splice(idx, 1); renderTurns(); }
+        }
+
         function renderTurns() {
             const cont = document.getElementById('turnsContainer');
             let html = '';
             currentTurns.forEach((t, i) => {
                 const even = (i + 1) % 2 === 0;
-                html += `<div class="turn-row" style="opacity: ${even ? '0.8' : '1'}">
-                    <input type="text" placeholder="P01" value="${t.participante}" oninput="updateTurn(${t.id}, 'participante', this.value)" onblur="resolveParticipantTurn(${t.id}, this)">
-                    <select onchange="updateTurn(${t.id}, 'genero', this.value)"><option value="masculino" ${t.genero === 'masculino' ? 'selected' : ''}>M</option><option value="femenino" ${t.genero === 'femenino' ? 'selected' : ''}>F</option><option value="no_binario" ${t.genero === 'no_binario' ? 'selected' : ''}>NB</option><option value="no_identificado" ${t.genero === 'no_identificado' ? 'selected' : ''}>?</option></select>
-                    <textarea placeholder="Mensaje..." oninput="updateTurn(${t.id}, 'mensaje', this.value)">${t.mensaje}</textarea>
-                    <button class="btn-remove-turn" onclick="removeTurn(${t.id})">×</button></div>`;
+                const tid = t.id;
+                const media = t.media || [];
+                let mediaHtml = '';
+                if (media.length > 0) {
+                    mediaHtml = '<div class="turn-media-row">';
+                    media.forEach((m, mi) => {
+                        mediaHtml += `<span class="turn-media-thumb"><img src="${m.data}" title="${escapeHtml(m.name)}" onclick="window.open('${m.data}','_blank')"><button class="remove-turn-media" onclick="removeTurnMedia(${tid},${mi})">×</button></span>`;
+                    });
+                    mediaHtml += '</div>';
+                }
+                html += `<div class="turn-row-wrap">
+                    <div class="turn-row" style="opacity:${even ? '0.8' : '1'}">
+                        <input type="text" placeholder="P01" value="${escapeHtml(t.participante)}" oninput="updateTurn(${tid},'participante',this.value)" onblur="resolveParticipantTurn(${tid},this)">
+                        <select onchange="updateTurn(${tid},'genero',this.value)">
+                            <option value="masculino" ${t.genero==='masculino'?'selected':''}>M</option>
+                            <option value="femenino" ${t.genero==='femenino'?'selected':''}>F</option>
+                            <option value="no_binario" ${t.genero==='no_binario'?'selected':''}>NB</option>
+                            <option value="no_identificado" ${t.genero==='no_identificado'?'selected':''}>?</option>
+                        </select>
+                        <textarea placeholder="Mensaje o descripción de imagen..." oninput="updateTurn(${tid},'mensaje',this.value)">${escapeHtml(t.mensaje)}</textarea>
+                        <input type="file" id="tf-${tid}" accept="image/*" style="display:none" onchange="handleTurnMedia(${tid},this)">
+                        <button class="btn-turn-media" onclick="document.getElementById('tf-${tid}').click()" title="Adjuntar imagen">📎</button>
+                        <button class="btn-remove-turn" onclick="removeTurn(${tid})">×</button>
+                    </div>
+                    ${mediaHtml}
+                </div>`;
             });
             cont.innerHTML = html;
         }
@@ -2329,16 +2443,101 @@
 
             cit.participante_nombre = nombre;
             cit.participante_telefono = telefono;
-            citations.unshift(cit);
+
+            if (editingCitationId !== null) {
+                // Modo edición: actualizar registro existente
+                const idx = citations.findIndex(c => c.id === editingCitationId);
+                if (idx !== -1) citations[idx] = { ...cit, id: editingCitationId };
+                editingCitationId = null;
+                document.getElementById('saveBtn').textContent = 'Guardar cita';
+                document.getElementById('editingIndicator').style.display = 'none';
+                document.getElementById('cancelEditBtn').style.display = 'none';
+                showToast('Cita actualizada ✓');
+            } else {
+                citations.unshift(cit);
+                showToast('Cita guardada ✓');
+            }
+
             saveCitations();
-            document.getElementById('citationDate').value = new Date().toISOString().split('T')[0];
-            document.getElementById('citationTime').value = new Date().toTimeString().slice(0, 5);
-            document.getElementById('fragment').value = ''; document.getElementById('invivoCode').value = '';
-            document.getElementById('memo').value = ''; document.getElementById('category').value = '';
+            // Mantener fecha y hora de la última entrada (no resetear a hoy)
+            document.getElementById('citationDate').value = cit.fecha;
+            document.getElementById('citationTime').value = cit.hora || new Date().toTimeString().slice(0, 5);
+            document.getElementById('fragment').value = '';
+            document.getElementById('invivoCode').value = '';
+            document.getElementById('memo').value = '';
+            document.getElementById('category').value = '';
             document.getElementById('participantNombre').value = '';
             document.getElementById('participantTelefono').value = '';
             currentTurns = []; currentMedia = []; renderTurns(); renderMedia();
-            showToast('Cita guardada ✓');
+            // Si el tipo es intercambio, dejar un turno vacío listo
+            if (document.getElementById('registrationType').value === 'intercambio') addTurn();
+        }
+
+        function editCitation(id) {
+            const cit = citations.find(c => c.id === id);
+            if (!cit) return;
+            editingCitationId = id;
+
+            // Llenar campos del formulario
+            document.getElementById('citationDate').value = cit.fecha || '';
+            document.getElementById('citationTime').value = cit.hora || '';
+            document.getElementById('registrationType').value = cit.tipo_registro || 'cita';
+            document.getElementById('participantId').value = cit.participante || '';
+            document.getElementById('participantNombre').value = cit.participante_nombre || '';
+            document.getElementById('participantTelefono').value = cit.participante_telefono || '';
+            document.getElementById('participantType').value = cit.tipo_participante || 'sin_clasificar';
+            document.getElementById('participantGender').value = cit.genero || 'no_identificado';
+            document.getElementById('category').value = cit.categoria || '';
+            document.getElementById('invivoCode').value = cit.codigo_invivo || '';
+            document.getElementById('tone').value = cit.tono || 'neutro';
+            document.getElementById('memo').value = cit.memo || '';
+
+            if (cit.tipo_registro === 'intercambio') {
+                currentTurns = (cit.turnos || []).map((t, i) => ({
+                    id: Date.now() + i,
+                    participante: t.participante || '',
+                    genero: t.genero || 'no_identificado',
+                    mensaje: t.mensaje || t.texto || '',
+                    media: t.media || []
+                }));
+                document.getElementById('interchangeDescription').value = cit.descripcion_intercambio || '';
+            } else {
+                document.getElementById('fragment').value = cit.fragmento || '';
+                currentTurns = [];
+            }
+            currentMedia = [...(cit.media || [])];
+            toggleType();
+            renderTurns();
+            renderMedia();
+
+            // UI de modo edición
+            document.getElementById('saveBtn').textContent = '💾 Actualizar cita';
+            document.getElementById('editingIndicator').style.display = 'block';
+            document.getElementById('editingIndicator').textContent = `✏️ Editando cita del ${cit.fecha} — ${cit.categoria}`;
+            document.getElementById('cancelEditBtn').style.display = 'inline-flex';
+            document.querySelector('.form-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+            // Abrir sección de datos del participante si hay datos
+            if (cit.participante_nombre || cit.participante_telefono) {
+                document.getElementById('participantExtras').open = true;
+            }
+        }
+
+        function cancelEdit() {
+            editingCitationId = null;
+            document.getElementById('saveBtn').textContent = 'Guardar cita';
+            document.getElementById('editingIndicator').style.display = 'none';
+            document.getElementById('cancelEditBtn').style.display = 'none';
+            document.getElementById('fragment').value = '';
+            document.getElementById('invivoCode').value = '';
+            document.getElementById('memo').value = '';
+            document.getElementById('category').value = '';
+            document.getElementById('participantId').value = '';
+            currentTurns = [];
+            currentMedia = [];
+            renderTurns();
+            renderMedia();
+            if (document.getElementById('registrationType').value === 'intercambio') addTurn();
         }
 
         function deleteCitation(id) {
@@ -2368,7 +2567,10 @@
                     ${isInt ? '<span class="meta-item" style="color:#FF9800">🔄</span>' : ''}</div>
                     <div class="citation-fragment">${escapeHtml(frag)}</div>
                     ${c.memo ? `<div style="font-size:0.7rem;color:#888;font-style:italic">${escapeHtml(c.memo.substring(0, 100))}${c.memo.length > 100 ? '...' : ''}</div>` : ''}
-                    <div class="citation-actions"><button class="btn btn-danger" onclick="event.stopPropagation(); deleteCitation(${c.id})">Eliminar</button></div></div>`;
+                    <div class="citation-actions">
+                        <button class="btn" onclick="event.stopPropagation(); editCitation(${c.id})" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;">✏️ Editar</button>
+                        <button class="btn btn-danger" onclick="event.stopPropagation(); deleteCitation(${c.id})">Eliminar</button>
+                    </div></div>`;
             });
             list.innerHTML = html;
         }
