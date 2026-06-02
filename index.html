@@ -701,6 +701,40 @@
 
         .btn-turn-media:hover { background: #e2e8f0; }
 
+        /* Participant quick-create popup */
+        .participant-qcp {
+            position: absolute;
+            top: calc(100% + 2px);
+            left: 0;
+            background: white;
+            border: 1px solid #2563eb;
+            border-radius: 6px;
+            padding: 6px 8px;
+            z-index: 200;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+            min-width: 200px;
+            font-size: 0.7rem;
+        }
+        .participant-qcp .qcp-label {
+            color: #2563eb; font-weight: 600; margin-bottom: 4px;
+            display: block; font-size: 0.65rem;
+        }
+        .participant-qcp input {
+            width: 100%; padding: 4px 8px; border: 1px solid #e2e8f0;
+            border-radius: 4px; font-size: 0.7rem; margin-bottom: 4px;
+        }
+        .participant-qcp .qcp-actions { display: flex; gap: 4px; }
+        .participant-qcp .qcp-actions button {
+            flex: 1; padding: 3px 0; border: none; border-radius: 4px;
+            font-size: 0.65rem; cursor: pointer; font-weight: 500;
+        }
+        .participant-qcp .qcp-btn-create { background: #2563eb; color: white; }
+        .participant-qcp .qcp-btn-skip { background: #f1f5f9; color: #64748b; }
+
+        /* Turn participant field wrapper */
+        .turn-pid-wrap { position: relative; width: 70px; flex-shrink: 0; }
+        .turn-pid-wrap input { width: 100%; }
+
         .citation-item {
             background: white;
             padding: 12px;
@@ -1179,69 +1213,55 @@
         </div>
         <div class="panel-center">
             <div class="form-section">
+                <!-- Campos ocultos para compatibilidad JS -->
+                <select id="registrationType" style="display:none"><option value="cita">cita</option><option value="intercambio">intercambio</option></select>
+                <textarea id="fragment" style="display:none"></textarea>
+
                 <div class="form-grid">
                     <div class="form-group"><label>Fecha</label><input type="date" id="citationDate"></div>
                     <div class="form-group"><label>Hora <span style="font-weight:400;color:#94a3b8;font-size:0.6rem">(auto)</span></label><input type="time" id="citationTime"></div>
-                    <div class="form-group">
-                        <label>Participante</label>
-                        <div class="autocomplete-container">
-                            <input type="text" id="participantId" placeholder="P01 o buscá por nombre..."
+                </div>
+
+                <!-- Sección de mensajes — siempre visible, tipo se auto-detecta -->
+                <div id="messagesSection" style="margin-top: 8px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                        <span style="font-size:0.7rem; color:#64748b; font-weight:600;">Mensajes del chat</span>
+                        <div style="display:flex; gap:4px;">
+                            <input type="file" id="waFile" accept=".txt" style="display:none" onchange="importWhatsApp(this)">
+                            <button class="btn btn-secondary" style="font-size:0.6rem; padding:3px 7px; color:#1e293b; border-color:#cbd5e1; background:#f8fafc;" onclick="document.getElementById('waFile').click()">📱 WhatsApp</button>
+                        </div>
+                    </div>
+                    <datalist id="participantDatalist"></datalist>
+                    <div class="interchange-turns" id="turnsContainer"></div>
+                    <button class="btn btn-add-turn" onclick="addTurn()" style="margin-top:6px;">+ Agregar mensaje</button>
+                    <textarea id="interchangeDescription" placeholder="Contexto del intercambio (opcional)..." style="width:100%; margin-top:6px; padding:8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.72rem; min-height:36px; resize:vertical; font-family:inherit;"></textarea>
+                </div>
+
+                <!-- Datos de participante — colapsado -->
+                <details id="participantExtras" style="margin: 6px 0;">
+                    <summary style="font-size:0.7rem; color:#64748b; cursor:pointer; user-select:none; padding:4px 0;">▸ Datos de un participante (nombre, teléfono, tipo, género)</summary>
+                    <div style="margin-top:8px;">
+                        <div class="autocomplete-container" style="margin-bottom:8px;">
+                            <input type="text" id="participantId" placeholder="P01 — buscá o escribí el participante..."
+                                style="width:100%; padding:8px 12px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.75rem;"
                                 oninput="showParticipantAutocomplete()" onfocus="showParticipantAutocomplete()"
-                                onblur="setTimeout(function() { if (!document.querySelector('.autocomplete-suggestion:hover')) hideParticipantAutocomplete(); }, 200)">
+                                onblur="setTimeout(function(){ if(!document.querySelector('.autocomplete-suggestion:hover')) hideParticipantAutocomplete(); },200)">
                             <div class="autocomplete-suggestions" id="participantSuggestions"></div>
                         </div>
-                    </div>
-                    <div class="form-group"><label>Tipo registro</label><select id="registrationType" onchange="toggleType()">
-                            <option value="cita">Cita individual</option>
-                            <option value="intercambio">Intercambio</option>
-                        </select></div>
-                </div>
-                <details id="participantExtras" style="margin: 6px 0;">
-                    <summary style="font-size:0.7rem; color:#64748b; cursor:pointer; user-select:none; padding: 4px 0;">▸ Datos del participante (nombre, teléfono, tipo, género)</summary>
-                    <div class="form-grid" style="margin-top: 8px;">
-                        <div class="form-group">
-                            <label>Nombre <span style="font-weight:400;color:#94a3b8">(opcional)</span></label>
-                            <input type="text" id="participantNombre" placeholder="Nombre y apellido">
-                        </div>
-                        <div class="form-group">
-                            <label>Teléfono <span style="font-weight:400;color:#94a3b8">(opcional)</span></label>
-                            <input type="tel" id="participantTelefono" placeholder="11-XXXX-XXXX">
-                        </div>
-                        <div class="form-group"><label>Tipo</label><select id="participantType">
-                                <option value="veterano">Veterano</option>
-                                <option value="nuevo">Nuevo</option>
-                                <option value="administrador">Administrador</option>
-                                <option value="sin_clasificar">Sin clasificar</option>
+                        <div class="form-grid">
+                            <div class="form-group"><label>Nombre</label><input type="text" id="participantNombre" placeholder="Nombre y apellido"></div>
+                            <div class="form-group"><label>Teléfono</label><input type="tel" id="participantTelefono" placeholder="11-XXXX-XXXX"></div>
+                            <div class="form-group"><label>Tipo</label><select id="participantType">
+                                <option value="veterano">Veterano</option><option value="nuevo">Nuevo</option>
+                                <option value="administrador">Administrador</option><option value="sin_clasificar">Sin clasificar</option>
                             </select></div>
-                        <div class="form-group"><label>Género</label><select id="participantGender">
-                                <option value="masculino">Masculino</option>
-                                <option value="femenino">Femenino</option>
-                                <option value="no_binario">No binario</option>
-                                <option value="no_identificado">No identificado</option>
+                            <div class="form-group"><label>Género</label><select id="participantGender">
+                                <option value="masculino">Masculino</option><option value="femenino">Femenino</option>
+                                <option value="no_binario">No binario</option><option value="no_identificado">No identificado</option>
                             </select></div>
+                        </div>
                     </div>
                 </details>
-                <div id="individualSection" style="margin-top: 8px;">
-                    <div class="form-group"><label>Fragmento del chat</label><textarea id="fragment"
-                            placeholder="Pegá aquí el mensaje..."></textarea></div>
-                </div>
-                <div id="interchangeSection" style="display: none;">
-                    <div
-                        style="display: flex; justify-content: space-between; align-items: center; margin: 6px 0 4px 0;">
-                        <h4 style="font-size: 0.75rem; color: #333; margin: 0;">Turnos del intercambio</h4>
-                        <div style="display: flex; gap: 4px;">
-                            <input type="file" id="waFile" accept=".txt" style="display: none;"
-                                onchange="importWhatsApp(this)">
-                            <button class="btn btn-secondary"
-                                style="font-size: 0.65rem; padding: 4px 8px; color: #1e293b; border-color: #cbd5e1; background: #f8fafc;"
-                                onclick="document.getElementById('waFile').click()">📱 Importar WhatsApp</button>
-                        </div>
-                    </div>
-                    <div class="interchange-turns" id="turnsContainer"></div>
-                    <button class="btn btn-add-turn" onclick="addTurn()">+ Agregar turno</button>
-                    <div class="form-group" style="margin-top: 6px;"><label>Descripción</label><textarea
-                            id="interchangeDescription" placeholder="Dinámica de la secuencia..."></textarea></div>
-                </div>
                 <div class="form-grid" style="margin-top: 8px;">
                     <div class="form-group">
                         <label>Categoría / Código</label>
@@ -1286,6 +1306,10 @@
                     <span id="filterInfo" class="filter-info" style="display: none;"></span>
                 </div>
                 <div id="citationsList"></div>
+                <details id="participantsQuickRef" style="margin-top:16px; border-top:1px solid #e2e8f0; padding-top:10px;">
+                    <summary style="font-size:0.7rem; color:#94a3b8; cursor:pointer; user-select:none;">👥 Participantes registrados</summary>
+                    <div id="participantsQuickList" style="margin-top:8px;"></div>
+                </details>
             </div>
             <div id="fieldNotesSection" class="citations-list" style="display: none; padding: 12px;">
                 <div class="form-group" style="margin-bottom: 8px;">
@@ -1889,6 +1913,8 @@
             addTurn();
             initCharts();
             updateParticipantCitationCounts();
+            updateParticipantDatalist();
+            renderParticipantsQuickList();
             // Usar debouncing para evitar re-renders excesivos
             const debouncedCategorySuggestions = debounce(showCategorySuggestions, 100);
             document.getElementById('category').addEventListener('input', debouncedCategorySuggestions);
@@ -2093,10 +2119,8 @@
         }
 
         function toggleType() {
-            const isInt = document.getElementById('registrationType').value === 'intercambio';
-            document.getElementById('individualSection').style.display = isInt ? 'none' : 'block';
-            document.getElementById('interchangeSection').style.display = isInt ? 'block' : 'none';
-            if (isInt && currentTurns.length === 0) addTurn();
+            // No-op: tipo se auto-detecta al guardar; secciones unificadas
+            if (currentTurns.length === 0) addTurn();
         }
 
         function addTurn() {
@@ -2145,7 +2169,10 @@
                 }
                 html += `<div class="turn-row-wrap">
                     <div class="turn-row" style="opacity:${even ? '0.8' : '1'}">
-                        <input type="text" placeholder="P01" value="${escapeHtml(t.participante)}" oninput="updateTurn(${tid},'participante',this.value)" onblur="resolveParticipantTurn(${tid},this)">
+                        <div class="turn-pid-wrap">
+                            <input type="text" list="participantDatalist" placeholder="P01" value="${escapeHtml(t.participante)}" oninput="updateTurn(${tid},'participante',this.value)" onblur="resolveParticipantTurn(${tid},this)">
+                            <div class="participant-qcp" id="qcp-${tid}" style="display:none"></div>
+                        </div>
                         <textarea placeholder="Mensaje o descripción de imagen..." oninput="updateTurn(${tid},'mensaje',this.value)">${escapeHtml(t.mensaje)}</textarea>
                         <input type="file" id="tf-${tid}" accept="image/*" style="display:none" onchange="handleTurnMedia(${tid},this)">
                         <button class="btn-turn-media" onclick="document.getElementById('tf-${tid}').click()" title="Adjuntar imagen">📎</button>
@@ -2196,37 +2223,93 @@
                     alert('No se detectaron mensajes en el formato de WhatsApp.');
                     return;
                 }
-                document.getElementById('registrationType').value = 'intercambio';
-                toggleType();
                 currentTurns = turnsData.map((t, idx) => ({
                     id: Date.now() + idx,
                     participante: t.participante.substring(0, 20),
                     genero: 'no_identificado',
-                    mensaje: t.mensaje
+                    mensaje: t.mensaje,
+                    media: []
                 }));
                 renderTurns();
-                alert(`Se importaron ${turnsData.length} turnos.\nSugerencia: recordá anonimizar los nombres por identificadores (ej: P01).`);
+                showToast(`${turnsData.length} mensajes importados. Recordá anonimizar los nombres (P01, P02...).`);
             };
             reader.readAsText(file);
             input.value = '';
         }
 
+        function updateParticipantDatalist() {
+            const dl = document.getElementById('participantDatalist');
+            if (!dl) return;
+            dl.innerHTML = participants.map(p =>
+                `<option value="${escapeHtml(p.pid)}">${escapeHtml(p.pid)}${p.nombre ? ' — ' + escapeHtml(p.nombre) : ''}</option>`
+            ).join('');
+        }
+
+        function quickCreateParticipant(pid, turnId) {
+            const nameInput = document.getElementById('qcp-name-' + turnId);
+            const nombre = nameInput ? nameInput.value.trim() : '';
+            findOrCreateParticipant(pid);
+            if (nombre) {
+                const p = getParticipantByPid(pid);
+                if (p) { p.nombre = nombre; saveParticipants(); }
+            }
+            const qcp = document.getElementById('qcp-' + turnId);
+            if (qcp) qcp.style.display = 'none';
+            updateParticipantDatalist();
+            renderParticipantsQuickList();
+            showToast(pid + ' creado ✓');
+        }
+
+        function renderParticipantsQuickList() {
+            const el = document.getElementById('participantsQuickList');
+            if (!el) return;
+            const all = getAllParticipants();
+            if (all.length === 0) { el.innerHTML = '<p style="font-size:0.7rem;color:#94a3b8;padding:4px 0;">Sin participantes aún.</p>'; return; }
+            el.innerHTML = all.map(p => `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:4px 0; border-bottom:1px solid #f1f5f9; font-size:0.72rem;">
+                    <span><strong style="color:#2563eb">${escapeHtml(p.pid)}</strong>${p.nombre ? ' — ' + escapeHtml(p.nombre) : ''}</span>
+                    <span style="color:#94a3b8; font-size:0.65rem;">${p.total_mensajes || 0} msgs · ${p.tipo_participante || ''}</span>
+                </div>`
+            ).join('');
+        }
+
         function resolveParticipantTurn(id, el) {
             let val = el.value.trim();
             if (!val) return;
-            let p = getParticipantByPid(val) || getParticipantByNameOrPhone(val);
-            if (!p) {
-                let numMatch = val.match(/^(\d+)$/);
-                if (numMatch) {
-                    let code = 'P' + numMatch[1].padStart(2, '0');
-                    p = getParticipantByPid(code) || { pid: code };
-                } else {
-                    p = getAllParticipants().find(x => x.nombre && x.nombre.toLowerCase().includes(val.toLowerCase()));
-                }
-            }
+
+            // Normalizar número puro → P0X
+            const numMatch = val.match(/^(\d+)$/);
+            if (numMatch) val = 'P' + numMatch[1].padStart(2, '0');
+
+            let p = getParticipantByPid(val) || getParticipantByNameOrPhone(val)
+                || getAllParticipants().find(x => x.nombre && x.nombre.toLowerCase().includes(val.toLowerCase()));
+
             if (p) {
                 el.value = p.pid;
                 updateTurn(id, 'participante', p.pid);
+                const qcp = document.getElementById('qcp-' + id);
+                if (qcp) qcp.style.display = 'none';
+                return;
+            }
+
+            // PID no existe → mostrar popup de creación rápida
+            const isPidLike = val.match(/^P?\d+$/i) || val.length <= 6;
+            const pid = val.toUpperCase().startsWith('P') ? val.toUpperCase() : val;
+            el.value = pid;
+            updateTurn(id, 'participante', pid);
+
+            if (isPidLike) {
+                const qcp = document.getElementById('qcp-' + id);
+                if (qcp) {
+                    qcp.innerHTML = `
+                        <span class="qcp-label">➕ ${escapeHtml(pid)} — nuevo participante</span>
+                        <input type="text" id="qcp-name-${id}" placeholder="Nombre (opcional)">
+                        <div class="qcp-actions">
+                            <button class="qcp-btn-create" onmousedown="quickCreateParticipant('${escapeHtml(pid)}', ${id})">Crear</button>
+                            <button class="qcp-btn-skip" onmousedown="document.getElementById('qcp-${id}').style.display='none'">Ignorar</button>
+                        </div>`;
+                    qcp.style.display = 'block';
+                }
             }
         }
 
@@ -2312,120 +2395,65 @@
 
         function saveCitation() {
             const cat = document.getElementById('category').value.trim();
-            if (!cat) { alert('Seleccioná o ingresá una categoría'); return; }
-            const isInt = document.getElementById('registrationType').value === 'intercambio';
+            if (!cat) { showToast('Seleccioná o ingresá una categoría', 'error'); return; }
 
-            // Validate form is complete before resolving participants
-            const participantName = document.getElementById('participantNombre').value.trim();
-            const participantPhone = document.getElementById('participantTelefono').value.trim();
-            const rawPid = document.getElementById('participantId').value.trim();
+            // Turnos válidos: tienen participante, mensaje o imagen
+            const validTurns = currentTurns.filter(t =>
+                t.participante.trim() || t.mensaje.trim() || (t.media && t.media.length > 0)
+            );
+            if (validTurns.length === 0) { showToast('Escribí al menos un mensaje', 'error'); return; }
 
-            if (!rawPid && !participantName) {
-                alert('Ingresá un ID de participante (P01, P02...) o escribí un nombre para crear uno nuevo.');
-                return;
-            }
+            // Auto-detectar tipo: 1 turno = cita, 2+ = intercambio
+            const isInt = validTurns.length > 1;
 
-            let pid;
-            if (rawPid) {
-                // Try matching by PID first
-                let p = getParticipantByPid(rawPid);
-                if (!p) {
-                    // Try matching by phone number (user might have typed phone in the PID field)
-                    p = getParticipantByNameOrPhone(rawPid);
-                }
-                if (!p) {
-                    // Try matching by name (user might have typed name in the PID field)
-                    p = getAllParticipants().find(x => x.nombre && x.nombre.toLowerCase() === rawPid.toLowerCase());
-                }
-                if (p) {
-                    pid = p.pid;
-                } else {
-                    // Check if rawPid looks like a PID pattern
-                    let numMatch = rawPid.match(/^(\d+)$/);
-                    if (numMatch) {
-                        pid = 'P' + numMatch[1].padStart(2, '0');
-                    } else {
-                        pid = getNextPid();
-                    }
-                }
-            } else {
-                // No PID entered — check if phone matches an existing participant
-                if (participantPhone) {
-                    const existingByPhone = getParticipantByNameOrPhone(participantPhone);
-                    if (existingByPhone) {
-                        pid = existingByPhone.pid;
-                    } else {
-                        pid = getNextPid();
-                    }
-                } else {
-                    pid = getNextPid();
-                }
-            }
+            // Participante principal = primer turno, o campo de detalles si está lleno
+            const firstTurnPid = validTurns[0]?.participante?.trim() || '';
+            const detailsPid = document.getElementById('participantId').value.trim();
+            let rawPid = firstTurnPid || detailsPid || getNextPid();
+            // Normalizar número puro → P0X
+            const numNorm = rawPid.match(/^(\d+)$/);
+            if (numNorm) rawPid = 'P' + numNorm[1].padStart(2, '0');
+            let mainP = getParticipantByPid(rawPid) || getParticipantByNameOrPhone(rawPid);
+            const pid = mainP ? mainP.pid : rawPid;
 
             const _hora = document.getElementById('citationTime').value || new Date().toTimeString().slice(0, 5);
             const _sesion = _hora < '13:00' ? 'mañana' : 'noche';
+            const mainParticipant = getParticipantByPid(pid);
             const cit = {
                 id: Date.now(), fecha: document.getElementById('citationDate').value,
                 hora: _hora, sesion: _sesion,
-                tipo_registro: document.getElementById('registrationType').value,
+                tipo_registro: isInt ? 'intercambio' : 'cita',
                 participante: pid,
-                tipo_participante: document.getElementById('participantType').value,
-                genero: document.getElementById('participantGender').value,
+                tipo_participante: document.getElementById('participantType').value || (mainParticipant?.tipo_participante) || 'sin_clasificar',
+                genero: document.getElementById('participantGender').value || (mainParticipant?.genero) || 'no_identificado',
                 categoria: cat, codigo_invivo: document.getElementById('invivoCode').value.trim(),
-                tono: document.getElementById('tone').value, memo: document.getElementById('memo').value.trim(),
+                tono: 'neutro', memo: document.getElementById('memo').value.trim(),
                 media: [...currentMedia]
             };
+
             if (isInt) {
                 cit.fragmento = null;
-                // Turno válido: tiene participante, mensaje o imagen adjunta
-                cit.turnos = currentTurns.filter(t =>
-                    t.participante.trim() || t.mensaje.trim() || (t.media && t.media.length > 0)
-                );
-
-                // RESOLVER ASOCIACIÓN EN INTERCAMBIOS — batch update para evitar N renders
+                cit.turnos = validTurns;
+                // Resolver participantes de cada turno
                 const updates = [];
                 cit.turnos.forEach(t => {
                     let val = t.participante.trim();
-                    if (!val) {
-                        const newPid = getNextPid();
-                        t.participante = newPid;
-                        updates.push({ pid: newPid, nombre: '', telefono: '', tipo_participante: 'sin_clasificar', genero: t.genero });
-                        return;
-                    }
-
+                    if (!val) { const np = getNextPid(); t.participante = np; updates.push({ pid: np, nombre: '', telefono: '', tipo_participante: 'sin_clasificar', genero: 'no_identificado' }); return; }
+                    const nm = val.match(/^(\d+)$/);
+                    if (nm) val = 'P' + nm[1].padStart(2, '0');
                     let p = getParticipantByPid(val) || getParticipantByNameOrPhone(val);
-                    if (!p) {
-                        let numMatch = val.match(/^(\d+)$/);
-                        if (numMatch) {
-                            const code = 'P' + numMatch[1].padStart(2, '0');
-                            p = getParticipantByPid(code);
-                            if (!p) {
-                                updates.push({ pid: code, nombre: '', telefono: '', tipo_participante: 'sin_clasificar', genero: t.genero });
-                                p = { pid: code };
-                            }
-                        } else {
-                            p = getAllParticipants().find(x => x.nombre && x.nombre.toLowerCase().includes(val.toLowerCase()));
-                            if (!p) {
-                                const newPid = getNextPid();
-                                updates.push({ pid: newPid, nombre: val, telefono: '', tipo_participante: 'sin_clasificar', genero: t.genero });
-                                p = { pid: newPid };
-                            }
-                        }
-                    }
+                    if (!p) { updates.push({ pid: val, nombre: '', telefono: '', tipo_participante: 'sin_clasificar', genero: 'no_identificado' }); p = { pid: val }; }
                     t.participante = p.pid;
-                    // Auto-derivar género desde el perfil del participante
                     const prof = getParticipantByPid(t.participante);
-                    t.genero = (prof && prof.genero) ? prof.genero : (t.genero || 'no_identificado');
+                    t.genero = (prof && prof.genero) ? prof.genero : 'no_identificado';
                 });
                 if (updates.length > 0) batchUpdateParticipants(updates);
-
                 cit.descripcion_intercambio = document.getElementById('interchangeDescription').value.trim();
                 cit.cantidad_turnos = cit.turnos.length;
-                if (cit.turnos.length < 1) { showToast('Agregá al menos un turno al intercambio', 'error'); return; }
             } else {
-                cit.fragmento = document.getElementById('fragment').value.trim();
+                // Cita individual: fragmento = mensaje del primer turno
+                cit.fragmento = validTurns[0].mensaje || '';
                 cit.turnos = null;
-                if (!cit.fragmento) { alert('La cita debe tener un fragmento'); return; }
             }
             // Persistir nombre y teléfono del participante
             const nombre = document.getElementById('participantNombre').value.trim();
@@ -2461,8 +2489,9 @@
             document.getElementById('participantNombre').value = '';
             document.getElementById('participantTelefono').value = '';
             currentTurns = []; currentMedia = []; renderTurns(); renderMedia();
-            // Si el tipo es intercambio, dejar un turno vacío listo
-            if (document.getElementById('registrationType').value === 'intercambio') addTurn();
+            addTurn(); // Siempre dejar un turno vacío listo
+            updateParticipantDatalist();
+            renderParticipantsQuickList();
         }
 
         function editCitation(id) {
@@ -2494,11 +2523,11 @@
                 }));
                 document.getElementById('interchangeDescription').value = cit.descripcion_intercambio || '';
             } else {
-                document.getElementById('fragment').value = cit.fragmento || '';
-                currentTurns = [];
+                // Cita individual → cargar como un turno
+                currentTurns = [{ id: Date.now(), participante: cit.participante || '', genero: cit.genero || 'no_identificado', mensaje: cit.fragmento || '', media: [] }];
+                document.getElementById('interchangeDescription').value = '';
             }
             currentMedia = [...(cit.media || [])];
-            toggleType();
             renderTurns();
             renderMedia();
 
@@ -2520,16 +2549,16 @@
             document.getElementById('saveBtn').textContent = 'Guardar cita';
             document.getElementById('editingIndicator').style.display = 'none';
             document.getElementById('cancelEditBtn').style.display = 'none';
-            document.getElementById('fragment').value = '';
             document.getElementById('invivoCode').value = '';
             document.getElementById('memo').value = '';
             document.getElementById('category').value = '';
             document.getElementById('participantId').value = '';
+            document.getElementById('interchangeDescription').value = '';
             currentTurns = [];
             currentMedia = [];
             renderTurns();
             renderMedia();
-            if (document.getElementById('registrationType').value === 'intercambio') addTurn();
+            addTurn();
         }
 
         function deleteCitation(id) {
