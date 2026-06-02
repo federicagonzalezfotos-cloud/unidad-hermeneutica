@@ -2154,12 +2154,6 @@
                 html += `<div class="turn-row-wrap">
                     <div class="turn-row" style="opacity:${even ? '0.8' : '1'}">
                         <input type="text" placeholder="P01" value="${escapeHtml(t.participante)}" oninput="updateTurn(${tid},'participante',this.value)" onblur="resolveParticipantTurn(${tid},this)">
-                        <select onchange="updateTurn(${tid},'genero',this.value)">
-                            <option value="masculino" ${t.genero==='masculino'?'selected':''}>M</option>
-                            <option value="femenino" ${t.genero==='femenino'?'selected':''}>F</option>
-                            <option value="no_binario" ${t.genero==='no_binario'?'selected':''}>NB</option>
-                            <option value="no_identificado" ${t.genero==='no_identificado'?'selected':''}>?</option>
-                        </select>
                         <textarea placeholder="Mensaje o descripción de imagen..." oninput="updateTurn(${tid},'mensaje',this.value)">${escapeHtml(t.mensaje)}</textarea>
                         <input type="file" id="tf-${tid}" accept="image/*" style="display:none" onchange="handleTurnMedia(${tid},this)">
                         <button class="btn-turn-media" onclick="document.getElementById('tf-${tid}').click()" title="Adjuntar imagen">📎</button>
@@ -2424,6 +2418,9 @@
                         }
                     }
                     t.participante = p.pid;
+                    // Auto-derivar género desde el perfil del participante
+                    const prof = getParticipantByPid(t.participante);
+                    t.genero = (prof && prof.genero) ? prof.genero : (t.genero || 'no_identificado');
                 });
                 if (updates.length > 0) batchUpdateParticipants(updates);
 
