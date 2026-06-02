@@ -2156,7 +2156,7 @@
                 html += `<div class="turn-row-wrap">
                     <div class="turn-row" style="opacity:${even ? '0.8' : '1'}">
                         <div class="turn-pid-wrap">
-                            <input type="text" list="participantDatalist" placeholder="P01" value="${escapeHtml(t.participante)}" oninput="updateTurn(${tid},'participante',this.value)" onblur="resolveParticipantTurn(${tid},this)">
+                            <input type="text" list="participantDatalist" placeholder="últimos 4 dígitos" value="${escapeHtml(t.participante)}" oninput="updateTurn(${tid},'participante',this.value)" onblur="resolveParticipantTurn(${tid},this)">
                             <div class="participant-qcp" id="qcp-${tid}" style="display:none"></div>
                         </div>
                         <textarea placeholder="Mensaje o descripción de imagen..." oninput="updateTurn(${tid},'mensaje',this.value)">${escapeHtml(t.mensaje)}</textarea>
@@ -2231,14 +2231,20 @@
             ).join('');
         }
 
-        function quickCreateParticipant(pid, turnId) {
-            const nameInput = document.getElementById('qcp-name-' + turnId);
-            const nombre = nameInput ? nameInput.value.trim() : '';
-            findOrCreateParticipant(pid);
-            if (nombre) {
-                const p = getParticipantByPid(pid);
-                if (p) { p.nombre = nombre; saveParticipants(); }
+        // Devuelve `base` si está libre, sino `base + letra` (1234 → 1234b → 1234c...)
+        function getAvailableId(base) {
+            if (!getParticipantByPid(base)) return base;
+            for (const l of 'bcdfghjkmnpqrstvwxyz') {
+                if (!getParticipantByPid(base + l)) return base + l;
             }
+            return base + '_' + Date.now().toString().slice(-3);
+        }
+
+        function quickCreateParticipant(pid, turnId) {
+            findOrCreateParticipant(pid);
+            // Actualizar el campo del turno con el pid confirmado
+            const turnInput = document.querySelector(`#turnsContainer .turn-row-wrap [id="qcp-${turnId}"]`)?.previousElementSibling;
+            updateTurn(turnId, 'participante', pid);
             const qcp = document.getElementById('qcp-' + turnId);
             if (qcp) qcp.style.display = 'none';
             updateParticipantDatalist();
@@ -2263,11 +2269,9 @@
             let val = el.value.trim();
             if (!val) return;
 
-            // Normalizar número puro → P0X
-            const numMatch = val.match(/^(\d+)$/);
-            if (numMatch) val = 'P' + numMatch[1].padStart(2, '0');
-
-            let p = getParticipantByPid(val) || getParticipantByNameOrPhone(val)
+            // Buscar participante existente por PID, teléfono o nombre
+            let p = getParticipantByPid(val)
+                || getParticipantByNameOrPhone(val)
                 || getAllParticipants().find(x => x.nombre && x.nombre.toLowerCase().includes(val.toLowerCase()));
 
             if (p) {
@@ -2278,24 +2282,33 @@
                 return;
             }
 
-            // PID no existe → mostrar popup de creación rápida
-            const isPidLike = val.match(/^P?\d+$/i) || val.length <= 6;
-            const pid = val.toUpperCase().startsWith('P') ? val.toUpperCase() : val;
-            el.value = pid;
-            updateTurn(id, 'participante', pid);
+            // No existe — calcular ID sugerido
+            let suggestedId;
+            if (/^\d{1,4}$/.test(val)) {
+                // 1–4 dígitos → completar a 4 y resolver conflictos
+                const base = val.padStart(4, '0');
+                suggestedId = getAvailableId(base);
+            } else {
+                suggestedId = val; // Acepta cualquier formato libre
+            }
 
-            if (isPidLike) {
-                const qcp = document.getElementById('qcp-' + id);
-                if (qcp) {
-                    qcp.innerHTML = `
-                        <span class="qcp-label">➕ ${escapeHtml(pid)} — nuevo participante</span>
-                        <input type="text" id="qcp-name-${id}" placeholder="Nombre (opcional)">
-                        <div class="qcp-actions">
-                            <button class="qcp-btn-create" onmousedown="quickCreateParticipant('${escapeHtml(pid)}', ${id})">Crear</button>
-                            <button class="qcp-btn-skip" onmousedown="document.getElementById('qcp-${id}').style.display='none'">Ignorar</button>
-                        </div>`;
-                    qcp.style.display = 'block';
-                }
+            el.value = suggestedId;
+            updateTurn(id, 'participante', suggestedId);
+
+            // Mostrar popup de confirmación rápida (sin campo nombre)
+            const qcp = document.getElementById('qcp-' + id);
+            if (qcp) {
+                const isConflict = suggestedId !== val && /^\d/.test(val);
+                const label = isConflict
+                    ? `⚠️ <strong>${escapeHtml(val)}</strong> ya existe → <strong>${escapeHtml(suggestedId)}</strong>`
+                    : `➕ Nuevo participante: <strong>${escapeHtml(suggestedId)}</strong>`;
+                qcp.innerHTML = `
+                    <span class="qcp-label" style="font-size:0.68rem;">${label}</span>
+                    <div class="qcp-actions" style="margin-top:4px;">
+                        <button class="qcp-btn-create" onmousedown="quickCreateParticipant('${escapeHtml(suggestedId)}',${id})">Crear</button>
+                        <button class="qcp-btn-skip" onmousedown="document.getElementById('qcp-${id}').style.display='none'">Ignorar</button>
+                    </div>`;
+                qcp.style.display = 'block';
             }
         }
 
