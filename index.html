@@ -2477,6 +2477,50 @@
             renderParticipantsQuickList();
         }
 
+        function duplicateCitation(id) {
+            const cit = citations.find(c => c.id === id);
+            if (!cit) return;
+            // Carga la cita en el formulario como si fuera nueva (sin editingCitationId)
+            // pero limpia categoría y código in vivo para que el usuario asigne uno nuevo
+            editingCitationId = null;
+
+            document.getElementById('citationDate').value = cit.fecha || '';
+            document.getElementById('citationTime').value = cit.hora || '';
+            document.getElementById('participantId').value = cit.participante || '';
+
+            if (cit.tipo_registro === 'intercambio') {
+                currentTurns = (cit.turnos || []).map((t, i) => ({
+                    id: Date.now() + i,
+                    participante: t.participante || '',
+                    genero: t.genero || 'no_identificado',
+                    mensaje: t.mensaje || t.texto || '',
+                    media: [] // no duplicar imágenes
+                }));
+                document.getElementById('interchangeDescription').value = cit.descripcion_intercambio || '';
+            } else {
+                currentTurns = [{ id: Date.now(), participante: cit.participante || '', genero: cit.genero || 'no_identificado', mensaje: cit.fragmento || '', media: [] }];
+                document.getElementById('interchangeDescription').value = '';
+            }
+
+            currentMedia = [];
+            renderTurns();
+            renderMedia();
+
+            // Mantener memo pero limpiar categoría — el usuario elige el nuevo código
+            document.getElementById('category').value = '';
+            document.getElementById('invivoCode').value = cit.codigo_invivo || '';
+            document.getElementById('memo').value = cit.memo || '';
+
+            // UI: indicador de que es una copia
+            document.getElementById('saveBtn').textContent = 'Guardar copia';
+            document.getElementById('editingIndicator').style.display = 'block';
+            document.getElementById('editingIndicator').textContent = `⧉ Duplicando cita del ${cit.fecha} — elegí una nueva categoría`;
+            document.getElementById('cancelEditBtn').style.display = 'inline-flex';
+
+            document.querySelector('.form-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            document.getElementById('category').focus();
+        }
+
         function editCitation(id) {
             const cit = citations.find(c => c.id === id);
             if (!cit) return;
@@ -2572,6 +2616,7 @@
                     ${c.memo ? `<div style="font-size:0.7rem;color:#888;font-style:italic">${escapeHtml(c.memo.substring(0, 100))}${c.memo.length > 100 ? '...' : ''}</div>` : ''}
                     <div class="citation-actions">
                         <button class="btn" onclick="event.stopPropagation(); editCitation(${c.id})" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;">✏️ Editar</button>
+                        <button class="btn" onclick="event.stopPropagation(); duplicateCitation(${c.id})" style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;">⧉ Duplicar</button>
                         <button class="btn btn-danger" onclick="event.stopPropagation(); deleteCitation(${c.id})">Eliminar</button>
                     </div></div>`;
             });
