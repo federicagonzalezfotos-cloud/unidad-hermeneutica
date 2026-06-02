@@ -2582,7 +2582,7 @@
                 html += `<div class="citation-item ${isInt ? 'intercambio' : 'cita'}" data-citation-id="${c.id}" onclick="openCitationDetail(${c.id})">
                     <div class="citation-meta">${pInfo}
                     <span class="meta-item">${c.fecha} ${c.sesion.charAt(0).toUpperCase() + c.sesion.slice(1)}</span>
-                    <span class="badge-category">${c.categoria}</span><span class="badge-tone">${c.tono}</span>
+                    <span class="badge-category">${c.categoria}</span>
                     ${c.codigo_invivo ? `<span class="meta-item">"${c.codigo_invivo}"</span>` : ''}
                     ${c.media.length > 0 ? '<span class="meta-item">📎</span>' : ''}
                     ${isInt ? '<span class="meta-item" style="color:#FF9800">🔄</span>' : ''}</div>
@@ -2805,7 +2805,6 @@
             html += `<div class="citation-detail-content" onclick="event.stopPropagation()">`;
             html += `<div class="citation-detail-header">`;
             html += `<span class="badge-category">${c.categoria}</span>`;
-            html += `<span class="badge-tone">${c.tono}</span>`;
             html += `</div>`;
             html += `<div class="citation-detail-meta">${pInfo} — ${c.fecha} ${c.sesion.charAt(0).toUpperCase() + c.sesion.slice(1)}</div>`;
             if (c.codigo_invivo) html += `<div class="citation-detail-invivo">"${escapeHtml(c.codigo_invivo)}"</div>`;
