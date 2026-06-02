@@ -2441,14 +2441,11 @@
                 cit.fragmento = validTurns[0].mensaje || '';
                 cit.turnos = null;
             }
-            // Persistir nombre y teléfono del participante
-            const nombre = document.getElementById('participantNombre').value.trim();
-            const telefono = document.getElementById('participantTelefono').value.trim();
-            // Guardar/actualizar perfil del participante PRIMERO para que updateAll() lo encuentre
-            addOrUpdateParticipant(pid, nombre, telefono, cit.tipo_participante, cit.genero);
-
-            cit.participante_nombre = nombre;
-            cit.participante_telefono = telefono;
+            // Asegurar que el participante existe sin sobreescribir sus datos
+            findOrCreateParticipant(pid);
+            const existingP = getParticipantByPid(pid);
+            cit.participante_nombre = existingP?.nombre || '';
+            cit.participante_telefono = existingP?.telefono || '';
 
             if (editingCitationId !== null) {
                 // Modo edición: actualizar registro existente
