@@ -45,3 +45,4 @@ coverage/
 backups/
 *_backup.*
 *.bak
+.vercel
