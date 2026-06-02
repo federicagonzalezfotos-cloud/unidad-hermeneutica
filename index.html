@@ -110,7 +110,48 @@
             flex-direction: column;
             overflow-y: auto;
             box-shadow: 1px 0 3px rgba(0, 0, 0, 0.05);
+            transition: width 0.2s ease;
+            position: relative;
+            flex-shrink: 0;
         }
+
+        .panel-left.collapsed {
+            width: 36px;
+            overflow: hidden;
+        }
+
+        .panel-left.collapsed .code-tree,
+        .panel-left.collapsed .panel-header,
+        .panel-left.collapsed > div:not(.panel-toggle-wrap) {
+            display: none;
+        }
+
+        .panel-toggle-wrap {
+            display: flex;
+            justify-content: flex-end;
+            padding: 6px 6px 0 6px;
+        }
+
+        .panel-left.collapsed .panel-toggle-wrap {
+            justify-content: center;
+        }
+
+        .btn-panel-toggle {
+            background: #e2e8f0;
+            border: none;
+            border-radius: 4px;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            font-size: 0.7rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #64748b;
+            flex-shrink: 0;
+        }
+
+        .btn-panel-toggle:hover { background: #cbd5e1; }
 
         .panel-header {
             padding: 12px;
@@ -1058,7 +1099,10 @@
         </div>
     </header>
     <div class="container">
-        <div class="panel-left">
+        <div class="panel-left" id="panelLeft">
+            <div class="panel-toggle-wrap">
+                <button class="btn-panel-toggle" id="panelToggleBtn" onclick="toggleLeftPanel()" title="Colapsar panel">◀</button>
+            </div>
             <div class="panel-header">Sistema de Códigos
                 <button class="btn"
                     style="width: 100%; margin-top: 5px; padding: 4px; font-size: 0.65rem; background: #e3f2fd; color: #1976D2;"
@@ -1075,10 +1119,7 @@
             <div class="form-section">
                 <div class="form-grid">
                     <div class="form-group"><label>Fecha</label><input type="date" id="citationDate"></div>
-                    <div class="form-group"><label>Sesión</label><select id="citationSession">
-                            <option value="mañana">Mañana</option>
-                            <option value="noche">Noche</option>
-                        </select></div>
+                    <div class="form-group"><label>Hora <span style="font-weight:400;color:#94a3b8;font-size:0.6rem">(auto)</span></label><input type="time" id="citationTime"></div>
                     <div class="form-group">
                         <label>Participante</label>
                         <div class="autocomplete-container">
@@ -1088,32 +1129,36 @@
                             <div class="autocomplete-suggestions" id="participantSuggestions"></div>
                         </div>
                     </div>
-                    <div class="form-group">
-                        <label>Nombre <span style="font-weight:400;color:#94a3b8">(opcional — se completa solo si elegís
-                                un existente)</span></label>
-                        <input type="text" id="participantNombre" placeholder="Nombre y apellido">
-                    </div>
-                    <div class="form-group">
-                        <label>Teléfono <span style="font-weight:400;color:#94a3b8">(opcional)</span></label>
-                        <input type="tel" id="participantTelefono" placeholder="11-XXXX-XXXX">
-                    </div>
-                    <div class="form-group"><label>Tipo</label><select id="participantType">
-                            <option value="veterano">Veterano</option>
-                            <option value="nuevo">Nuevo</option>
-                            <option value="administrador">Administrador</option>
-                            <option value="sin_clasificar">Sin clasificar</option>
-                        </select></div>
-                    <div class="form-group"><label>Género</label><select id="participantGender">
-                            <option value="masculino">Masculino</option>
-                            <option value="femenino">Femenino</option>
-                            <option value="no_binario">No binario</option>
-                            <option value="no_identificado">No identificado</option>
-                        </select></div>
-                    <div class="form-group"><label>Tipo</label><select id="registrationType" onchange="toggleType()">
+                    <div class="form-group"><label>Tipo registro</label><select id="registrationType" onchange="toggleType()">
                             <option value="cita">Cita individual</option>
                             <option value="intercambio">Intercambio</option>
                         </select></div>
                 </div>
+                <details id="participantExtras" style="margin: 6px 0;">
+                    <summary style="font-size:0.7rem; color:#64748b; cursor:pointer; user-select:none; padding: 4px 0;">▸ Datos del participante (nombre, teléfono, tipo, género)</summary>
+                    <div class="form-grid" style="margin-top: 8px;">
+                        <div class="form-group">
+                            <label>Nombre <span style="font-weight:400;color:#94a3b8">(opcional)</span></label>
+                            <input type="text" id="participantNombre" placeholder="Nombre y apellido">
+                        </div>
+                        <div class="form-group">
+                            <label>Teléfono <span style="font-weight:400;color:#94a3b8">(opcional)</span></label>
+                            <input type="tel" id="participantTelefono" placeholder="11-XXXX-XXXX">
+                        </div>
+                        <div class="form-group"><label>Tipo</label><select id="participantType">
+                                <option value="veterano">Veterano</option>
+                                <option value="nuevo">Nuevo</option>
+                                <option value="administrador">Administrador</option>
+                                <option value="sin_clasificar">Sin clasificar</option>
+                            </select></div>
+                        <div class="form-group"><label>Género</label><select id="participantGender">
+                                <option value="masculino">Masculino</option>
+                                <option value="femenino">Femenino</option>
+                                <option value="no_binario">No binario</option>
+                                <option value="no_identificado">No identificado</option>
+                            </select></div>
+                    </div>
+                </details>
                 <div id="individualSection" style="margin-top: 8px;">
                     <div class="form-group"><label>Fragmento del chat</label><textarea id="fragment"
                             placeholder="Pegá aquí el mensaje..."></textarea></div>
@@ -1170,9 +1215,10 @@
                     <button class="btn btn-primary" onclick="saveCitation()">Guardar cita</button>
                 </div>
             </div>
-            <div class="tabs" style="border-bottom: 1px solid #e2e8f0; background: #fff; margin-top: 8px;">
+            <div class="tabs" id="centerTabs" style="border-bottom: 1px solid #e2e8f0; background: #fff; margin-top: 8px;">
                 <div class="tab active" onclick="switchPanelCenterTab('citations')">Citas</div>
-                <div class="tab" onclick="switchPanelCenterTab('fieldNotes')">Notas de Campo</div>
+                <div class="tab" onclick="switchPanelCenterTab('fieldNotes')">Notas</div>
+                <div class="tab" onclick="switchPanelCenterTab('analisis')">📊 Análisis</div>
             </div>
             <div id="citationsSection" class="citations-list" style="padding: 12px;">
                 <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
@@ -1196,135 +1242,83 @@
                     style="width: 100%; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.75rem; margin-bottom: 8px;">
                 <div class="memo-list" id="fieldNotesList"></div>
             </div>
-        </div>
-        <div class="panel-right">
-            <div class="tabs">
-                <div class="tab active" onclick="switchTab('dashboard')">Dashboard</div>
-                <div class="tab" onclick="switchTab('tejido')">Tejido</div>
-                <div class="tab" onclick="switchTab('participants')">Participantes</div>
-            </div>
-            <div id="dashboard" class="panel-content">
-                <div class="metrics-grid">
-                    <div class="metric-card">
-                        <div class="metric-value" id="totalCitations">0</div>
-                        <div class="metric-label">Citas</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-value" id="activeCategories">0</div>
-                        <div class="metric-label">Categorías</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-value" id="daysObserved">0</div>
-                        <div class="metric-label">Días</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-value" id="totalMedia">0</div>
-                        <div class="metric-label">Archivos</div>
-                    </div>
+            <div id="analisisSection" style="display: none; flex: 1; flex-direction: column; overflow: hidden;">
+                <div class="tabs" style="background:#f8fafc; border-bottom:1px solid #e2e8f0;">
+                    <div class="tab active" onclick="switchTab('dashboard')">Dashboard</div>
+                    <div class="tab" onclick="switchTab('tejido')">Tejido</div>
+                    <div class="tab" onclick="switchTab('participants')">Participantes</div>
                 </div>
-                <div class="chart-container">
-                    <h4 style="font-size: 0.75rem; margin-bottom: 6px; color: #333;">Frecuencia por Categoría</h4>
-                    <canvas id="categoryChart"></canvas>
-                </div>
-                <div class="chart-container">
-                    <h4 style="font-size: 0.75rem; margin-bottom: 6px; color: #333;">Género</h4>
-                    <div class="donut-chart"><canvas id="genderChart"></canvas></div>
-                    <p style="font-size: 0.55rem; color: #666; text-align: center;">Género estimado por patrones
-                        discursivos</p>
-                </div>
-                <div class="chart-container">
-                    <h4 style="font-size: 0.75rem; margin-bottom: 6px; color: #333;">Citas vs Intercambios</h4>
-                    <div style="display: flex; gap: 12px; justify-content: center; margin-top: 6px;">
-                        <div style="text-align: center;">
-                            <div class="metric-value" style="font-size: 0.9rem;" id="citasCount">0</div>
-                            <div style="font-size: 0.55rem; color: #666;">Citas</div>
+                <div id="dashboard" class="panel-content">
+                    <div class="metrics-grid">
+                        <div class="metric-card"><div class="metric-value" id="totalCitations">0</div><div class="metric-label">Citas</div></div>
+                        <div class="metric-card"><div class="metric-value" id="activeCategories">0</div><div class="metric-label">Categorías</div></div>
+                        <div class="metric-card"><div class="metric-value" id="daysObserved">0</div><div class="metric-label">Días</div></div>
+                        <div class="metric-card"><div class="metric-value" id="totalMedia">0</div><div class="metric-label">Archivos</div></div>
+                    </div>
+                    <div class="chart-container">
+                        <h4 style="font-size: 0.75rem; margin-bottom: 6px; color: #333;">Frecuencia por Categoría</h4>
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <h4 style="font-size: 0.75rem; margin-bottom: 6px; color: #333;">Género</h4>
+                        <div class="donut-chart"><canvas id="genderChart"></canvas></div>
+                        <p style="font-size: 0.55rem; color: #666; text-align: center;">Género estimado por patrones discursivos</p>
+                    </div>
+                    <div class="chart-container">
+                        <h4 style="font-size: 0.75rem; margin-bottom: 6px; color: #333;">Citas vs Intercambios</h4>
+                        <div style="display: flex; gap: 12px; justify-content: center; margin-top: 6px;">
+                            <div style="text-align: center;"><div class="metric-value" style="font-size: 0.9rem;" id="citasCount">0</div><div style="font-size: 0.55rem; color: #666;">Citas</div></div>
+                            <div style="text-align: center;"><div class="metric-value" style="font-size: 0.9rem;" id="intercambiosCount">0</div><div style="font-size: 0.55rem; color: #666;">Intercambios</div></div>
                         </div>
-                        <div style="text-align: center;">
-                            <div class="metric-value" style="font-size: 0.9rem;" id="intercambiosCount">0</div>
-                            <div style="font-size: 0.55rem; color: #666;">Intercambios</div>
+                    </div>
+                    <div id="saturationWarnings"></div>
+                    <div class="chart-container">
+                        <h4 style="font-size: 0.75rem; margin-bottom: 6px; color: #333;">Heatmap Sesión × Categoría</h4>
+                        <div class="heatmap-container">
+                            <table class="heatmap-table" id="heatmapTable">
+                                <thead><tr><th></th><th id="heatmapHeaders"></th></tr></thead>
+                                <tbody id="heatmapBody"></tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
-                <div id="saturationWarnings"></div>
-                <div class="chart-container">
-                    <h4 style="font-size: 0.75rem; margin-bottom: 6px; color: #333;">Heatmap Sesión × Categoría</h4>
-                    <div class="heatmap-container">
-                        <table class="heatmap-table" id="heatmapTable">
-                            <thead>
-                                <tr>
-                                    <th></th>
-                                    <th id="heatmapHeaders"></th>
-                                </tr>
-                            </thead>
-                            <tbody id="heatmapBody"></tbody>
-                        </table>
+                <div id="tejido" class="panel-content" style="display: none;">
+                    <div style="margin-bottom: 10px;">
+                        <p style="font-size: 0.65rem; color: #64748b; line-height: 1.5; margin-bottom: 8px;">Muestra qué categorías co-ocurren en los mismos participantes.</p>
+                        <div style="display: flex; gap: 6px; margin-bottom: 10px;">
+                            <button class="btn" style="flex:1; font-size:0.65rem; background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe;" onclick="renderTejido('participante')">Por participante</button>
+                            <button class="btn" style="flex:1; font-size:0.65rem; background:#f0fdf4; color:#16a34a; border:1px solid #bbf7d0;" onclick="renderTejido('sesion')">Por sesión</button>
+                        </div>
                     </div>
+                    <div id="tejidoContent"></div>
                 </div>
-            </div>
-            <div id="tejido" class="panel-content" style="display: none;">
-                <div style="margin-bottom: 10px;">
-                    <p style="font-size: 0.65rem; color: #64748b; line-height: 1.5; margin-bottom: 8px;">
-                        Muestra qué categorías co-ocurren en los mismos participantes. Cuanto más alto el número, más veces un mismo participante fue codificado en ambas.
-                    </p>
-                    <div style="display: flex; gap: 6px; margin-bottom: 10px;">
-                        <button class="btn" style="flex:1; font-size:0.65rem; background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe;" onclick="renderTejido('participante')">Por participante</button>
-                        <button class="btn" style="flex:1; font-size:0.65rem; background:#f0fdf4; color:#16a34a; border:1px solid #bbf7d0;" onclick="renderTejido('sesion')">Por sesión</button>
+                <div id="participants" class="panel-content" style="display: none;">
+                    <input type="text" class="search-input" id="participantsSearch" placeholder="Buscar por nombre, teléfono o PXX..." oninput="renderParticipantsList()">
+                    <div class="participant-form" id="participantForm" style="display: none;">
+                        <div class="form-grid">
+                            <div class="form-group"><label>ID Participante</label><input type="text" id="editParticipantPid" placeholder="P01" readonly></div>
+                            <div class="form-group"><label>Nombre</label><input type="text" id="editParticipantNombre" placeholder="Nombre y apellido"></div>
+                            <div class="form-group"><label>Teléfono</label><input type="tel" id="editParticipantTelefono" placeholder="11-XXXX-XXXX"></div>
+                            <div class="form-group"><label>Tipo</label><select id="editParticipantTipo">
+                                <option value="veterano">Veterano</option><option value="nuevo">Nuevo</option>
+                                <option value="administrador">Administrador</option><option value="sin_clasificar">Sin clasificar</option>
+                            </select></div>
+                        </div>
+                        <div class="form-grid" style="margin-top: 6px;">
+                            <div class="form-group"><label>Género</label><select id="editParticipantGenero">
+                                <option value="masculino">Masculino</option><option value="femenino">Femenino</option>
+                                <option value="no_binario">No binario</option><option value="no_identificado">No identificado</option>
+                            </select></div>
+                            <div class="form-group" style="justify-content: flex-end;"><button class="btn btn-primary" onclick="saveParticipantFromForm()" style="width: 100%;">Guardar</button></div>
+                        </div>
+                        <div style="display: flex; gap: 6px; margin-top: 6px;">
+                            <button class="btn" onclick="closeParticipantForm()" style="flex: 1; font-size: 0.65rem; background: #94a3b8; color: white;">Cancelar</button>
+                            <button class="btn btn-danger" onclick="deleteCurrentParticipant()" id="btnDeleteParticipant" style="display: none; font-size: 0.65rem;">Eliminar</button>
+                        </div>
                     </div>
+                    <button class="btn btn-primary" onclick="showNewParticipantForm()" style="width: 100%; margin-bottom: 10px; font-size: 0.7rem;">+ Nuevo participante</button>
+                    <div class="memo-list" id="participantsList"></div>
                 </div>
-                <div id="tejidoContent"></div>
-            </div>
-            <div id="participants" class="panel-content" style="display: none;">
-                <input type="text" class="search-input" id="participantsSearch"
-                    placeholder="Buscar por nombre, teléfono o PXX..." oninput="renderParticipantsList()">
-                <div class="participant-form" id="participantForm" style="display: none;">
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label>ID Participante</label>
-                            <input type="text" id="editParticipantPid" placeholder="P01" readonly>
-                        </div>
-                        <div class="form-group">
-                            <label>Nombre</label>
-                            <input type="text" id="editParticipantNombre" placeholder="Nombre y apellido">
-                        </div>
-                        <div class="form-group">
-                            <label>Teléfono</label>
-                            <input type="tel" id="editParticipantTelefono" placeholder="11-XXXX-XXXX">
-                        </div>
-                        <div class="form-group">
-                            <label>Tipo</label>
-                            <select id="editParticipantTipo">
-                                <option value="veterano">Veterano</option>
-                                <option value="nuevo">Nuevo</option>
-                                <option value="administrador">Administrador</option>
-                                <option value="sin_clasificar">Sin clasificar</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="form-grid" style="margin-top: 6px;">
-                        <div class="form-group">
-                            <label>Género</label>
-                            <select id="editParticipantGenero">
-                                <option value="masculino">Masculino</option>
-                                <option value="femenino">Femenino</option>
-                                <option value="no_binario">No binario</option>
-                                <option value="no_identificado">No identificado</option>
-                            </select>
-                        </div>
-                        <div class="form-group" style="justify-content: flex-end;">
-                            <button class="btn btn-primary" onclick="saveParticipantFromForm()"
-                                style="width: 100%;">Guardar</button>
-                        </div>
-                    </div>
-                    <div style="display: flex; gap: 6px; margin-top: 6px;">
-                        <button class="btn" onclick="closeParticipantForm()"
-                            style="flex: 1; font-size: 0.65rem; background: #94a3b8; color: white;">Cancelar</button>
-                        <button class="btn btn-danger" onclick="deleteCurrentParticipant()" id="btnDeleteParticipant"
-                            style="display: none; font-size: 0.65rem;">Eliminar</button>
-                    </div>
-                </div>
-                <button class="btn btn-primary" onclick="showNewParticipantForm()"
-                    style="width: 100%; margin-bottom: 10px; font-size: 0.7rem;">+ Nuevo participante</button>
-                <div class="memo-list" id="participantsList"></div>
             </div>
         </div>
     </div>
@@ -1838,6 +1832,7 @@
             const debouncedCategorySuggestions = debounce(showCategorySuggestions, 100);
             document.getElementById('category').addEventListener('input', debouncedCategorySuggestions);
             document.getElementById('citationDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('citationTime').value = new Date().toTimeString().slice(0, 5);
             // Inicializar tab de panel-center
             switchPanelCenterTab('citations');
         }
@@ -2267,9 +2262,11 @@
                 }
             }
 
+            const _hora = document.getElementById('citationTime').value || new Date().toTimeString().slice(0, 5);
+            const _sesion = _hora < '13:00' ? 'mañana' : 'noche';
             const cit = {
                 id: Date.now(), fecha: document.getElementById('citationDate').value,
-                sesion: document.getElementById('citationSession').value,
+                hora: _hora, sesion: _sesion,
                 tipo_registro: document.getElementById('registrationType').value,
                 participante: pid,
                 tipo_participante: document.getElementById('participantType').value,
@@ -2335,6 +2332,7 @@
             citations.unshift(cit);
             saveCitations();
             document.getElementById('citationDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('citationTime').value = new Date().toTimeString().slice(0, 5);
             document.getElementById('fragment').value = ''; document.getElementById('invivoCode').value = '';
             document.getElementById('memo').value = ''; document.getElementById('category').value = '';
             document.getElementById('participantNombre').value = '';
@@ -2681,8 +2679,13 @@
             document.getElementById('citasCount').textContent = cc;
             document.getElementById('intercambiosCount').textContent = ic;
 
-            renderCategoryChart();
-            renderGenderChart();
+            // Solo renderizar gráficos si el panel Análisis está visible (evita canvas de tamaño 0)
+            const analisisVisible = document.getElementById('analisisSection')?.style.display !== 'none'
+                && document.getElementById('dashboard')?.style.display !== 'none';
+            if (analisisVisible) {
+                renderCategoryChart();
+                renderGenderChart();
+            }
             renderHeatmap();
             renderSaturationWarnings();
         }
@@ -2765,19 +2768,25 @@
         }
 
         function switchTab(name) {
-            document.querySelectorAll('.panel-right .tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.panel-right .panel-content').forEach(c => c.style.display = 'none');
-            const tabs = document.querySelectorAll('.panel-right .tab');
+            const analisisSection = document.getElementById('analisisSection');
+            if (!analisisSection) return;
+            analisisSection.querySelectorAll(':scope > .tabs .tab').forEach(t => t.classList.remove('active'));
+            ['dashboard', 'tejido', 'participants'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = 'none';
+            });
+            const tabs = analisisSection.querySelectorAll(':scope > .tabs .tab');
             if (name === 'dashboard') {
                 document.getElementById('dashboard').style.display = 'block';
-                tabs[0].classList.add('active');
+                if (tabs[0]) tabs[0].classList.add('active');
+                renderDashboard();
             } else if (name === 'tejido') {
                 document.getElementById('tejido').style.display = 'block';
-                tabs[1].classList.add('active');
+                if (tabs[1]) tabs[1].classList.add('active');
                 renderTejido('participante');
             } else if (name === 'participants') {
                 document.getElementById('participants').style.display = 'block';
-                tabs[2].classList.add('active');
+                if (tabs[2]) tabs[2].classList.add('active');
                 renderParticipantsList();
             }
         }
@@ -2956,16 +2965,34 @@
         }
 
         function switchPanelCenterTab(name) {
-            document.querySelectorAll('.panel-center .tab').forEach(t => t.classList.remove('active'));
-            document.getElementById('citationsSection').style.display = 'none';
-            document.getElementById('fieldNotesSection').style.display = 'none';
+            document.querySelectorAll('#centerTabs .tab').forEach(t => t.classList.remove('active'));
+            ['citationsSection', 'fieldNotesSection', 'analisisSection'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = 'none';
+            });
+            const tabs = document.querySelectorAll('#centerTabs .tab');
             if (name === 'citations') {
                 document.getElementById('citationsSection').style.display = 'block';
-                document.querySelectorAll('.panel-center .tab')[0].classList.add('active');
+                if (tabs[0]) tabs[0].classList.add('active');
             } else if (name === 'fieldNotes') {
                 document.getElementById('fieldNotesSection').style.display = 'block';
-                document.querySelectorAll('.panel-center .tab')[1].classList.add('active');
+                if (tabs[1]) tabs[1].classList.add('active');
+                renderFieldNotes();
+            } else if (name === 'analisis') {
+                const el = document.getElementById('analisisSection');
+                el.style.display = 'flex';
+                if (tabs[2]) tabs[2].classList.add('active');
+                // Render dashboard lazily when tab opens
+                if (document.getElementById('dashboard').style.display !== 'none') renderDashboard();
             }
+        }
+
+        function toggleLeftPanel() {
+            const panel = document.getElementById('panelLeft');
+            const btn = document.getElementById('panelToggleBtn');
+            panel.classList.toggle('collapsed');
+            btn.textContent = panel.classList.contains('collapsed') ? '▶' : '◀';
+            btn.title = panel.classList.contains('collapsed') ? 'Expandir panel' : 'Colapsar panel';
         }
 
         function openCategoryManager() {
