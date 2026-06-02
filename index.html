@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>UH — Uber Mendoza</title>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
@@ -1047,6 +1048,10 @@
             <span class="badge">Modo offline</span>
             <button class="btn btn-primary" onclick="exportJSON()">💾 Backup JSON</button>
             <button class="btn btn-secondary" onclick="exportMemos()" style="background: rgba(16,185,129,0.15); border-color: rgba(16,185,129,0.4);">📝 Exportar Memos</button>
+            <div style="display:flex; flex-direction:column; align-items:center; gap:2px;">
+                <button id="driveBtn" class="btn btn-secondary" onclick="saveToDrive()" style="background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.25);">☁️ Drive</button>
+                <span id="driveBtnSub" style="font-size:0.55rem; color:rgba(255,255,255,0.5); cursor:pointer; display:none;" onclick="loadFromDrive()">↓ cargar</span>
+            </div>
             <button class="btn btn-secondary" onclick="document.getElementById('importFile').click()">📂
                 Importar</button>
             <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importJSON(this)">
@@ -2368,6 +2373,192 @@
                     <div class="citation-actions"><button class="btn btn-danger" onclick="event.stopPropagation(); deleteCitation(${c.id})">Eliminar</button></div></div>`;
             });
             list.innerHTML = html;
+        }
+
+        // === Google Drive Integration ===
+        const DRIVE_CLIENT_ID = '215247255613-m78e2sv09ashvctgfi81m084mui29q50.apps.googleusercontent.com';
+        const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+        const DRIVE_FILE_NAME = 'UH_backup_ubermendoza.json';
+
+        let _tokenClient = null;
+        let _accessToken = null;
+        let _driveFileId = localStorage.getItem('uh_drive_fileid') || null;
+        let _pendingDriveAction = null;
+
+        function _getDriveTokenClient() {
+            if (_tokenClient) return _tokenClient;
+            _tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: DRIVE_CLIENT_ID,
+                scope: DRIVE_SCOPE,
+                callback: async (resp) => {
+                    if (resp.error) {
+                        showToast('No se pudo conectar con Drive', 'error');
+                        return;
+                    }
+                    _accessToken = resp.access_token;
+                    _updateDriveButton(true);
+                    if (_pendingDriveAction === 'save') await _doSaveToDrive();
+                    else if (_pendingDriveAction === 'load') await _doLoadFromDrive();
+                    _pendingDriveAction = null;
+                }
+            });
+            return _tokenClient;
+        }
+
+        async function saveToDrive() {
+            _pendingDriveAction = 'save';
+            if (!_accessToken) {
+                try { _getDriveTokenClient().requestAccessToken(); }
+                catch(e) { showToast('Cargando Google... esperá un segundo', 'error'); }
+                return;
+            }
+            await _doSaveToDrive();
+        }
+
+        async function _doSaveToDrive() {
+            const payload = JSON.stringify({
+                version: 'v4',
+                exportado_en: new Date().toISOString(),
+                citas: citations,
+                fieldNotes,
+                participants
+            }, null, 2);
+
+            const authHeader = { 'Authorization': `Bearer ${_accessToken}` };
+
+            try {
+                let res;
+                if (_driveFileId) {
+                    // Intentar actualizar el archivo existente
+                    res = await fetch(
+                        `https://www.googleapis.com/upload/drive/v3/files/${_driveFileId}?uploadType=media`,
+                        { method: 'PATCH', headers: { ...authHeader, 'Content-Type': 'application/json' }, body: payload }
+                    );
+                    if (res.status === 404) {
+                        // El archivo fue eliminado — crear uno nuevo
+                        _driveFileId = null;
+                        localStorage.removeItem('uh_drive_fileid');
+                        return _doSaveToDrive();
+                    }
+                }
+                if (!_driveFileId) {
+                    // Crear archivo nuevo con metadata
+                    const meta = { name: DRIVE_FILE_NAME, mimeType: 'application/json' };
+                    const form = new FormData();
+                    form.append('metadata', new Blob([JSON.stringify(meta)], { type: 'application/json' }));
+                    form.append('file', new Blob([payload], { type: 'application/json' }));
+                    res = await fetch(
+                        'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
+                        { method: 'POST', headers: authHeader, body: form }
+                    );
+                }
+
+                if (res.status === 401) {
+                    _accessToken = null;
+                    _pendingDriveAction = 'save';
+                    _getDriveTokenClient().requestAccessToken();
+                    return;
+                }
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.id) {
+                        _driveFileId = data.id;
+                        localStorage.setItem('uh_drive_fileid', _driveFileId);
+                    }
+                    showToast('Guardado en Drive ✓');
+                } else {
+                    showToast('Error al guardar en Drive', 'error');
+                }
+            } catch(e) {
+                showToast('Sin conexión — no se pudo guardar en Drive', 'error');
+            }
+        }
+
+        async function loadFromDrive() {
+            _pendingDriveAction = 'load';
+            if (!_accessToken) {
+                try { _getDriveTokenClient().requestAccessToken(); }
+                catch(e) { showToast('Cargando Google... esperá un segundo', 'error'); }
+                return;
+            }
+            await _doLoadFromDrive();
+        }
+
+        async function _doLoadFromDrive() {
+            const authHeader = { 'Authorization': `Bearer ${_accessToken}` };
+            try {
+                // Si no tenemos el fileId guardado, buscar el archivo por nombre
+                if (!_driveFileId) {
+                    const searchRes = await fetch(
+                        `https://www.googleapis.com/drive/v3/files?q=name='${DRIVE_FILE_NAME}' and trashed=false&fields=files(id,modifiedTime)&orderBy=modifiedTime desc`,
+                        { headers: authHeader }
+                    );
+                    const searchData = await searchRes.json();
+                    if (!searchData.files || searchData.files.length === 0) {
+                        showToast('No se encontró backup en Drive', 'error');
+                        return;
+                    }
+                    _driveFileId = searchData.files[0].id;
+                    localStorage.setItem('uh_drive_fileid', _driveFileId);
+                }
+
+                const res = await fetch(
+                    `https://www.googleapis.com/drive/v3/files/${_driveFileId}?alt=media`,
+                    { headers: authHeader }
+                );
+                if (!res.ok) { showToast('Error al descargar desde Drive', 'error'); return; }
+
+                const data = await res.json();
+                if (!data.version || !['v2', 'v3', 'v4'].includes(data.version)) {
+                    showToast('Archivo de Drive inválido', 'error');
+                    return;
+                }
+
+                const existing = new Set(citations.map(c => c.id));
+                let newC = 0, existC = 0;
+                (data.citas || []).forEach(c => {
+                    if (existing.has(c.id)) existC++;
+                    else { citations.push(c); newC++; }
+                });
+                if (data.fieldNotes) {
+                    const existingNotes = new Set(fieldNotes.map(n => n.id));
+                    data.fieldNotes.forEach(n => { if (!existingNotes.has(n.id)) fieldNotes.push(n); });
+                }
+                if (data.participants) {
+                    const existingPids = new Set(participants.map(p => p.pid));
+                    data.participants.forEach(p => { if (!existingPids.has(p.pid)) participants.push(p); });
+                }
+
+                await localforage.setItem(STORAGE_KEY, JSON.stringify(citations));
+                await localforage.setItem(STORAGE_KEY_FIELD_NOTES, JSON.stringify(fieldNotes));
+                await localforage.setItem(STORAGE_KEY_PARTICIPANTS, JSON.stringify(participants));
+                invalidateCaches();
+                scheduleUpdate('citations');
+                scheduleUpdate('codeTree');
+                scheduleUpdate('dashboard');
+                scheduleUpdate('participants');
+                showToast(`Drive: ${newC} citas nuevas importadas ✓`);
+            } catch(e) {
+                showToast('Error al cargar desde Drive', 'error');
+            }
+        }
+
+        function _updateDriveButton(connected) {
+            const btn = document.getElementById('driveBtn');
+            const sub = document.getElementById('driveBtnSub');
+            if (!btn) return;
+            if (connected) {
+                btn.textContent = '☁️ Drive ✓';
+                btn.style.background = 'rgba(16,185,129,0.2)';
+                btn.style.borderColor = 'rgba(16,185,129,0.5)';
+                btn.style.color = '#6ee7b7';
+                if (sub) sub.style.display = 'block';
+            }
+        }
+
+        // Si ya teníamos fileId guardado, mostrar el botón como conectado
+        if (_driveFileId) {
+            document.addEventListener('DOMContentLoaded', () => _updateDriveButton(true));
         }
 
         function showToast(msg, type = 'success') {
