@@ -2385,7 +2385,10 @@
             };
             if (isInt) {
                 cit.fragmento = null;
-                cit.turnos = currentTurns.filter(t => t.mensaje.trim());
+                // Turno válido: tiene participante, mensaje o imagen adjunta
+                cit.turnos = currentTurns.filter(t =>
+                    t.participante.trim() || t.mensaje.trim() || (t.media && t.media.length > 0)
+                );
 
                 // RESOLVER ASOCIACIÓN EN INTERCAMBIOS — batch update para evitar N renders
                 const updates = [];
@@ -2426,7 +2429,7 @@
 
                 cit.descripcion_intercambio = document.getElementById('interchangeDescription').value.trim();
                 cit.cantidad_turnos = cit.turnos.length;
-                if (cit.turnos.length < 2) { alert('El intercambio debe tener al menos 2 turnos'); return; }
+                if (cit.turnos.length < 1) { showToast('Agregá al menos un turno al intercambio', 'error'); return; }
             } else {
                 cit.fragmento = document.getElementById('fragment').value.trim();
                 cit.turnos = null;
