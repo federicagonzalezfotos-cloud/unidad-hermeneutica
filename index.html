@@ -1237,31 +1237,15 @@
                     <textarea id="interchangeDescription" placeholder="Contexto del intercambio (opcional)..." style="width:100%; margin-top:6px; padding:8px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.72rem; min-height:36px; resize:vertical; font-family:inherit;"></textarea>
                 </div>
 
-                <!-- Datos de participante — colapsado -->
-                <details id="participantExtras" style="margin: 6px 0;">
-                    <summary style="font-size:0.7rem; color:#64748b; cursor:pointer; user-select:none; padding:4px 0;">▸ Datos de un participante (nombre, teléfono, tipo, género)</summary>
-                    <div style="margin-top:8px;">
-                        <div class="autocomplete-container" style="margin-bottom:8px;">
-                            <input type="text" id="participantId" placeholder="P01 — buscá o escribí el participante..."
-                                style="width:100%; padding:8px 12px; border:1px solid #e2e8f0; border-radius:6px; font-size:0.75rem;"
-                                oninput="showParticipantAutocomplete()" onfocus="showParticipantAutocomplete()"
-                                onblur="setTimeout(function(){ if(!document.querySelector('.autocomplete-suggestion:hover')) hideParticipantAutocomplete(); },200)">
-                            <div class="autocomplete-suggestions" id="participantSuggestions"></div>
-                        </div>
-                        <div class="form-grid">
-                            <div class="form-group"><label>Nombre</label><input type="text" id="participantNombre" placeholder="Nombre y apellido"></div>
-                            <div class="form-group"><label>Teléfono</label><input type="tel" id="participantTelefono" placeholder="11-XXXX-XXXX"></div>
-                            <div class="form-group"><label>Tipo</label><select id="participantType">
-                                <option value="veterano">Veterano</option><option value="nuevo">Nuevo</option>
-                                <option value="administrador">Administrador</option><option value="sin_clasificar">Sin clasificar</option>
-                            </select></div>
-                            <div class="form-group"><label>Género</label><select id="participantGender">
-                                <option value="masculino">Masculino</option><option value="femenino">Femenino</option>
-                                <option value="no_binario">No binario</option><option value="no_identificado">No identificado</option>
-                            </select></div>
-                        </div>
-                    </div>
-                </details>
+                <!-- Inputs ocultos de participante — usados por JS, no visibles -->
+                <div id="participantExtras" style="display:none">
+                    <input type="text" id="participantId">
+                    <div class="autocomplete-suggestions" id="participantSuggestions"></div>
+                    <input type="text" id="participantNombre">
+                    <input type="tel" id="participantTelefono">
+                    <select id="participantType"><option value="veterano">Veterano</option><option value="nuevo">Nuevo</option><option value="administrador">Administrador</option><option value="sin_clasificar">Sin clasificar</option></select>
+                    <select id="participantGender"><option value="masculino">Masculino</option><option value="femenino">Femenino</option><option value="no_binario">No binario</option><option value="no_identificado">No identificado</option></select>
+                </div>
                 <div class="form-grid" style="margin-top: 8px;">
                     <div class="form-group">
                         <label>Categoría / Código</label>
@@ -1832,7 +1816,8 @@
         function showEditParticipantForm(pid) {
             const p = getParticipantByPid(pid);
             if (!p) return;
-            document.getElementById('participantForm').style.display = 'block';
+            const form = document.getElementById('participantForm');
+            form.style.display = 'block';
             document.getElementById('editParticipantPid').value = p.pid;
             document.getElementById('editParticipantNombre').value = p.nombre || '';
             document.getElementById('editParticipantTelefono').value = p.telefono || '';
@@ -1840,6 +1825,7 @@
             document.getElementById('editParticipantGenero').value = p.genero || 'no_identificado';
             document.getElementById('btnDeleteParticipant').style.display = 'inline-block';
             currentParticipantEditPid = pid;
+            form.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
         function closeParticipantForm() {
@@ -2538,10 +2524,9 @@
             document.getElementById('cancelEditBtn').style.display = 'inline-flex';
             document.querySelector('.form-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-            // Abrir sección de datos del participante si hay datos
-            if (cit.participante_nombre || cit.participante_telefono) {
-                document.getElementById('participantExtras').open = true;
-            }
+            // Cargar datos del participante en campos ocultos
+            document.getElementById('participantNombre').value = cit.participante_nombre || '';
+            document.getElementById('participantTelefono').value = cit.participante_telefono || '';
         }
 
         function cancelEdit() {
