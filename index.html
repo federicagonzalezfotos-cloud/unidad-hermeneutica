@@ -2409,9 +2409,6 @@
             const firstTurnPid = validTurns[0]?.participante?.trim() || '';
             const detailsPid = document.getElementById('participantId').value.trim();
             let rawPid = firstTurnPid || detailsPid || getNextPid();
-            // Normalizar número puro → P0X
-            const numNorm = rawPid.match(/^(\d+)$/);
-            if (numNorm) rawPid = 'P' + numNorm[1].padStart(2, '0');
             let mainP = getParticipantByPid(rawPid) || getParticipantByNameOrPhone(rawPid);
             const pid = mainP ? mainP.pid : rawPid;
 
@@ -2438,8 +2435,6 @@
                 cit.turnos.forEach(t => {
                     let val = t.participante.trim();
                     if (!val) { const np = getNextPid(); t.participante = np; updates.push({ pid: np, nombre: '', telefono: '', tipo_participante: 'sin_clasificar', genero: 'no_identificado' }); return; }
-                    const nm = val.match(/^(\d+)$/);
-                    if (nm) val = 'P' + nm[1].padStart(2, '0');
                     let p = getParticipantByPid(val) || getParticipantByNameOrPhone(val);
                     if (!p) { updates.push({ pid: val, nombre: '', telefono: '', tipo_participante: 'sin_clasificar', genero: 'no_identificado' }); p = { pid: val }; }
                     t.participante = p.pid;
