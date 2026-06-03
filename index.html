@@ -1185,9 +1185,9 @@
             <span class="badge">Modo offline</span>
             <button class="btn btn-primary" onclick="exportJSON()">💾 Backup JSON</button>
             <button class="btn btn-secondary" onclick="exportMemos()" style="background: rgba(16,185,129,0.15); border-color: rgba(16,185,129,0.4);">📝 Exportar Memos</button>
-            <div style="display:flex; flex-direction:column; align-items:center; gap:2px;">
-                <button id="driveBtn" class="btn btn-secondary" onclick="saveToDrive()" style="background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.25);">☁️ Drive</button>
-                <span id="driveBtnSub" style="font-size:0.55rem; color:rgba(255,255,255,0.5); cursor:pointer; display:none;" onclick="loadFromDrive()">↓ cargar</span>
+            <div style="display:flex; gap:4px; align-items:center;">
+                <button id="driveBtn" class="btn btn-secondary" onclick="saveToDrive()" style="background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.25);" title="Guardar en Drive">☁️ Guardar</button>
+                <button id="driveBtnLoad" class="btn btn-secondary" onclick="loadFromDrive()" style="background:rgba(16,185,129,0.12); border-color:rgba(16,185,129,0.35); color:#6ee7b7;" title="Restaurar desde Drive">↓ Restaurar</button>
             </div>
             <button class="btn btn-secondary" onclick="document.getElementById('importFile').click()">📂
                 Importar</button>
@@ -2770,30 +2770,48 @@
                     return;
                 }
 
-                const existing = new Set(citations.map(c => c.id));
+                // Si los datos locales están vacíos → restore completo; si no → merge
+                const localEmpty = citations.length === 0;
                 let newC = 0, existC = 0;
-                (data.citas || []).forEach(c => {
-                    if (existing.has(c.id)) existC++;
-                    else { citations.push(c); newC++; }
-                });
-                if (data.fieldNotes) {
-                    const existingNotes = new Set(fieldNotes.map(n => n.id));
-                    data.fieldNotes.forEach(n => { if (!existingNotes.has(n.id)) fieldNotes.push(n); });
-                }
-                if (data.participants) {
-                    const existingPids = new Set(participants.map(p => p.pid));
-                    data.participants.forEach(p => { if (!existingPids.has(p.pid)) participants.push(p); });
+
+                if (localEmpty) {
+                    // Restauración completa
+                    citations = data.citas || [];
+                    fieldNotes = data.fieldNotes || [];
+                    participants = data.participants || [];
+                    newC = citations.length;
+                } else {
+                    // Merge inteligente
+                    const existing = new Set(citations.map(c => c.id));
+                    (data.citas || []).forEach(c => {
+                        if (existing.has(c.id)) existC++;
+                        else { citations.push(c); newC++; }
+                    });
+                    if (data.fieldNotes) {
+                        const existingNotes = new Set(fieldNotes.map(n => n.id));
+                        data.fieldNotes.forEach(n => { if (!existingNotes.has(n.id)) fieldNotes.push(n); });
+                    }
+                    if (data.participants) {
+                        const existingPids = new Set(participants.map(p => p.pid));
+                        data.participants.forEach(p => { if (!existingPids.has(p.pid)) participants.push(p); });
+                    }
                 }
 
                 await localforage.setItem(STORAGE_KEY, JSON.stringify(citations));
                 await localforage.setItem(STORAGE_KEY_FIELD_NOTES, JSON.stringify(fieldNotes));
                 await localforage.setItem(STORAGE_KEY_PARTICIPANTS, JSON.stringify(participants));
                 invalidateCaches();
-                scheduleUpdate('citations');
-                scheduleUpdate('codeTree');
-                scheduleUpdate('dashboard');
-                scheduleUpdate('participants');
-                showToast(`Drive: ${newC} citas nuevas importadas ✓`);
+                buildCategoryCounts();
+                updateParticipantCitationCounts();
+                renderCitationsList();
+                renderCodeTree();
+                renderDashboard();
+                renderParticipantsQuickList();
+                updateParticipantDatalist();
+                const msg = localEmpty
+                    ? `✓ Restauradas ${newC} citas desde Drive`
+                    : `Drive: ${newC} citas nuevas, ${existC} ya existían`;
+                showToast(msg);
             } catch(e) {
                 showToast('Error al cargar desde Drive', 'error');
             }
@@ -2801,20 +2819,23 @@
 
         function _updateDriveButton(connected) {
             const btn = document.getElementById('driveBtn');
-            const sub = document.getElementById('driveBtnSub');
             if (!btn) return;
             if (connected) {
-                btn.textContent = '☁️ Drive ✓';
+                btn.textContent = '☁️ Guardar ✓';
                 btn.style.background = 'rgba(16,185,129,0.2)';
                 btn.style.borderColor = 'rgba(16,185,129,0.5)';
                 btn.style.color = '#6ee7b7';
-                if (sub) sub.style.display = 'block';
             }
         }
 
-        // Si ya teníamos fileId guardado, mostrar el botón como conectado
-        if (_driveFileId) {
-            document.addEventListener('DOMContentLoaded', () => _updateDriveButton(true));
+        // Mostrar estado conectado si ya teníamos fileId (evita race con DOMContentLoaded)
+        function _initDriveUI() {
+            if (_driveFileId) _updateDriveButton(true);
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', _initDriveUI);
+        } else {
+            _initDriveUI();
         }
 
         function showToast(msg, type = 'success') {
