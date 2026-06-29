@@ -2018,7 +2018,7 @@
 
             // Cerrar modal participante con Escape
             document.addEventListener('keydown', e => {
-                if (e.key === 'Escape') closeParticipantModal();
+                if (e.key === 'Escape') { closeParticipantModal(); closeCategoryManager(); }
             });
         }
 
@@ -3447,10 +3447,20 @@
             btn.title = panel.classList.contains('collapsed') ? 'Expandir panel' : 'Colapsar panel';
         }
 
+        function closeCategoryManager(event) {
+            if (event && event.target.id !== 'categoryManagerModal') return;
+            const modal = document.getElementById('categoryManagerModal');
+            if (modal) modal.style.display = 'none';
+        }
+
         function openCategoryManager() {
             const cats = getCategories();
-            let html = '<div class="citation-detail-content"><h3>Gestionar Categorías</h3><div style="margin: 10px 0; max-height: 50vh; overflow-y: auto;">';
+            let html = '<div class="citation-detail-content" onclick="event.stopPropagation()"><h3>Gestionar Categorías</h3><div style="margin: 10px 0; max-height: 50vh; overflow-y: auto;">';
             html += '<p style="font-size:0.75rem; color:#64748b; margin-bottom: 10px;">Edita el nombre de una categoría para renombrarla. Si usas el nombre de una categoría existente, se fusionarán.</p>';
+
+            if (cats.length === 0) {
+                html += '<p style="font-size:0.8rem; color:#94a3b8; text-align:center; padding: 20px 10px;">Todavía no hay categorías. Se crean automáticamente al guardar citas con una categoría o código.</p>';
+            }
 
             cats.forEach((cat, idx) => {
                 const escapedCat = escapeHtml(cat);
@@ -3468,6 +3478,7 @@
                 modal = document.createElement('div');
                 modal.id = 'categoryManagerModal';
                 modal.className = 'citation-detail-modal';
+                modal.setAttribute('onclick', 'closeCategoryManager(event)');
                 document.body.appendChild(modal);
             }
             modal.innerHTML = html;
